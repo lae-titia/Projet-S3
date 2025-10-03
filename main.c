@@ -1,4 +1,5 @@
-
+#include "solver.h"
+#include <err.h>
 int main(int argc,char** const argv)
 {
 	if (argc != 3)

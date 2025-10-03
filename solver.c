@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
+#include <err.h>
 
 //Fonctions trouver sur internet pour les images de formats PPM. A ameliorer.
-
+//il y a des erreurs lors de la compilation avec gcc donc j'ai commenté le code que je n' ai pas fait.
+/*
 Image* NouvelleImage(int w,int h)
 {
 	Image* I = malloc(sizeof(Image));
@@ -94,7 +95,7 @@ int Sauver(Image* I,const char* fichier)
 	fclose(F);
 	return 0;
 }
-
+*/
 void solver(char* file,char* word)
 {
 
