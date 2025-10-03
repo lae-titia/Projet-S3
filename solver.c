@@ -95,6 +95,228 @@ int Sauver(Image* I,const char* fichier)
 	return 0;
 }
 
+void solver(char* file,char* word)
+{
+
+	int cursor = 0;
+	while (word[cursor] != '\0')
+	{
+		if(word[cursor] >= 97)
+		       word[cursor] -= 32;
+		cursor++;	
+	}
+
+	printf("Reading grid...\n");
+	FILE* fileToRead = fopen(file,"r");
+	if (fileToRead == NULL)
+		errx(1,"file %s do not exist or can't be read", file);
+	char* line;
+	size_t nbColone = 0;
+	size_t lineSize = 0;
+	size_t nbLigne = 0;
+	while(getline(&line,&lineSize,fileToRead) != -1)
+	{
+		nbLigne++;
+	}
+	while(line[nbColone] != '\0')
+	{
+		nbColone++;
+	}
+	nbColone--;
+
+	
+
+	char grid[nbLigne][nbColone];
+	rewind(fileToRead);
+	int i = 0;
+	while(getline(&line,&lineSize,fileToRead) != -1)
+	{
+
+		strcpy(grid[i],line);
+		i++;
+	}
+	printf("Searching word...\n");
+
+	for (size_t k = 0; k < nbLigne;k++)
+	{
+		for(size_t j = 0; j < nbColone ; j++)
+		{
+
+			if(word[0] == grid[k][j])
+			{
+				size_t o = 0;
+				int forward = 1;
+				int backward = 1;
+				int up = 1;
+				int down = 1;
+				int DLup = 1;
+				int DRup = 1;
+				int DLdown = 1;
+				int DRdown = 1;
+				while(word[o] != '\0')
+				{
+					if (forward && j+o < nbColone)
+					{
+						if (word[o] != grid[k][j+o])
+						{
+							forward = 0;
+						}
+					}
+					else
+					{
+						forward = 0;
+					}
+					//
+					if (backward && j >= o)
+					{
+						if (word[o] != grid[k][j-o])
+						{
+							backward = 0;
+						}
+					}
+					else
+					{
+						backward = 0;
+					}
+					//
+					if (down && k+o < nbLigne)
+					{
+						if (word[o] != grid[k+o][j])
+						{
+							down = 0;
+						}
+					}
+					else
+					{
+						down = 0;
+					}
+					//
+						
+					if (up && k >= o)
+					{
+						if (word[o] != grid[k-o][j])
+						{
+							up = 0;
+						}
+					}
+					else
+					{
+						up = 0;
+					}
+					//
+					if (DLup && k >= o && j >= o)
+					{
+						if (word[o] != grid[k-o][j-o])
+						{
+							DLup = 0;
+						}
+					}
+					else
+					{
+						DLup = 0;
+					}
+					//
+					if (DRup && j+o < nbColone && k >= o)
+					{
+						if (word[o] != grid[k-o][j+o])
+						{
+							DRup = 0;
+						}
+					}
+					else
+					{
+						DRup = 0;
+					}
+					//
+					if (DLdown && k+o < nbLigne && j >= o)
+					{
+						if (word[o] != grid[k+o][j-o])
+						{
+							DLdown = 0;
+						}
+					}
+					else
+					{
+						DLdown = 0;
+					}
+					//
+					if (DRdown && k+o < nbLigne  && j+o < nbColone)
+					{
+						if (word[o] != grid[k+o][j+o])
+						{
+							DRdown = 0;
+						}
+					}
+					else
+					{
+						DRdown = 0;
+					}
+					//
+					o++;
+				}
+				o--;
+				if (forward)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j+o,k);
+					return;
+				}
+				else if (backward)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j-o,k);
+					return;
+				}
+				else if (up)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j,k-o);
+					return;
+				}
+				else if (down)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j,k+o);
+					return;
+				}
+				else if (DLup)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j-o,k-o);
+					return;
+				}
+				else if (DRup)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j+o,k-o);
+					return;
+				}
+				else if (DLdown)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j-o,k+o);
+					return;
+				}
+				else if (DRdown)
+				{
+					printf("(%lu,%lu),(%lu,%lu)\n",j,k,j+o,k+o);
+					return;
+				}
+			
+			}	
+		}
+	}
+	printf("Not Found\n");
+	return;
+}
+
+int main(int argc,char** const argv)
+{
+	if (argc != 3)
+	{
+		errx(2,"wrong number of arguments");
+	}
+	char* fileName = argv[1];
+	char* word = argv[2];
+	solver(fileName,word);
+	return 0;
+}
+
+
+
 
 // Ajouter les fonctions du TP 1 pour les fichiers de format BMP.
 
