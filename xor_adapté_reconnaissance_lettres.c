@@ -43,11 +43,12 @@ void softmax(double *values, int size) {
 
 
 //Adapte la fonction forward pour utiliser softmax
+//Pour faire passer données de l'entrée vers la sortie du réseau->traverse couches, transforme image lettres en 26 proba (lettres de a à z)
 void forward_ocr(struct LayerNetwork *net, double *inputs)
 {
-    for (int l = 0; l < net->nb_layer; l++) {
+    for (int l = 0; l < net->nb_layer; l++) { //pour parcourir couches
         struct Layer *layer = &net->network[l];
-        double *entrees = (l == 0) ? inputs : net->network[l - 1].values;
+        double *entrees = (l == 0) ? inputs : net->network[l - 1].values;//couche cachée l=0 couche sortie l=1
         
         for (int i = 0; i < layer->nb_neurone; i++) {
             double somme = 0.0;
@@ -60,7 +61,7 @@ void forward_ocr(struct LayerNetwork *net, double *inputs)
             if (l < net->nb_layer - 1) {
                 layer->values[i] = sigmoid(somme);
             } else {
-                // Stocker la valeur brute pour softmax
+                // Stocker la valeur pour softmax
                 layer->values[i] = somme;
             }
         }
@@ -74,11 +75,14 @@ void forward_ocr(struct LayerNetwork *net, double *inputs)
 
 
 //Adapter backprop pour plusieurs sorties + softmax
+//but: réseau apprend des erreurs -> calcule erreur commise puis ajuste les poids pour réduire erreurs 
+//si réseau predit B alors que c'est A, backprop modifie le poids pour qu'il se rapproche de A
+//forward va d'entrée vers sortie et backprop va de sortie vers entrée 
 
 void backprop_ocr(struct LayerNetwork *net, double *inputs, double *targets)
 {
     int L = net->nb_layer;
-    double **delta = malloc(L * sizeof(double*));
+    double **delta = malloc(L * sizeof(double*)); //si delta<0 il devrait s'activer + alors que si delta<0 il devrait d'activer -  -> prediction-attendu
     struct Layer *output = &net->network[L - 1];
     
     // Calcul du delta pour la couche de sortie (avec softmax)
