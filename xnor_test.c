@@ -1,4 +1,5 @@
 /*
+ * xnor_test.c
  * Preuve de Concept - Réseau de Neurones pour XNOR
  * Fonction à apprendre: (non A . non B) + (A . B)
  * 
@@ -14,7 +15,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
-#include "neurone_system.h"
+#include "neural_network.h"  /* ← CHANGÉ ICI */
 
 #define PASSAGE 100000
 #define RATE 0.5
@@ -331,6 +332,7 @@ int main(void)
         free(inputs[i]);
     free(inputs);
     free(outputs);
+    free_network(net);
     
     return 0;
 }
