@@ -217,6 +217,7 @@ double *prediction(double *input, const char *file_name)
 void principal(double **inputs, int *neurones_par_couche,const gchar *file_name, double *outputs, int nb_layers, int nb_inputs)
 {
     printf("c'est dedans");
+    srand(0); //mouais 
     struct LayerNetwork *net = network(nb_layers, neurones_par_couche, 2); 
     for(int j = 0; j < nb_inputs; j++)
     {

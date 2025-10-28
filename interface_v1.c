@@ -5,7 +5,8 @@
 
 void open_resolution_window(GtkWidget *widget, gpointer data);
 void open_training_window(GtkWidget *widget, gpointer data);
-
+GtkWidget *box_testing_contain = NULL;
+GList *pending_results = NULL; 
 
 int main (int argc, char *argv[])
 {
@@ -24,6 +25,7 @@ int main (int argc, char *argv[])
 	//Initialise GTK
 	gtk_init(&argc, &argv);
 
+
 	//Inisialiser les widgets
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title (GTK_WINDOW (window), "SolvLad");
@@ -39,7 +41,7 @@ int main (int argc, char *argv[])
 	
 	
 	box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    	gtk_container_add(GTK_CONTAINER(window), box);
+    gtk_container_add(GTK_CONTAINER(window), box);
 
 
 	gtk_box_pack_start (GTK_BOX(box), label, TRUE, TRUE, 0);
@@ -306,6 +308,82 @@ int *get_neurones(const gchar *nb_neurones)
     return array;
 }
 typedef struct {
+    GtkWidget *entry;
+    char *label_text;
+} ResultData;
+
+
+void on_result(GtkWidget *button, gpointer user_data)
+{
+    ResultData *data = (ResultData *)user_data;
+
+    const char *input_text = gtk_entry_get_text(GTK_ENTRY(data->entry));
+    printf("Texte saisi : %s\n", input_text);
+    printf("Label du bouton d'origine : %s\n", data->label_text);
+
+    int nb_inputs = 0;
+    int **input = get_input(input_text, &nb_inputs);
+    double *value = prediction((double*)input[0], data->label_text);
+
+    double val = value[0];
+
+    char buffer[50];
+    snprintf(buffer, sizeof(buffer), "%.0f", val);
+    GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(loading_window), "Result");
+    gtk_window_set_default_size(GTK_WINDOW(loading_window), 200, 100);
+    GtkWidget *label = gtk_label_new(buffer);
+    gtk_container_add(GTK_CONTAINER(loading_window), label);
+    gtk_widget_show_all(loading_window);
+
+    g_free(data->label_text);
+    g_free(data);
+}
+
+void on_result_clicked(GtkWidget *button, gpointer user_data) {
+    const char *label = gtk_button_get_label(GTK_BUTTON(button));
+
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "Testing Section");
+    gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(window), vbox);
+
+    GtkWidget *label_input = gtk_label_new("Entry your input");
+    GtkWidget *entry_input = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(vbox), label_input, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), entry_input, FALSE, FALSE, 0);
+
+    GtkWidget *button_result = gtk_button_new_with_label("Result");
+    gtk_widget_set_size_request(button_result, 200, 50);
+    gtk_box_pack_start(GTK_BOX(vbox), button_result, FALSE, FALSE, 10);
+    gtk_widget_set_halign(button_result, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(button_result, GTK_ALIGN_CENTER);
+
+    ResultData *data = g_malloc(sizeof(ResultData));
+    data->entry = entry_input;
+    data->label_text = g_strdup(label); // copie du texte du bouton
+
+    g_signal_connect(button_result, "clicked", G_CALLBACK(on_result), data);
+
+    gtk_widget_show_all(window);
+}
+
+void ajouter_resultat(const char *texte_resultat) {
+    if (box_testing_contain) {
+        GtkWidget *btn = gtk_button_new_with_label(texte_resultat);
+        g_signal_connect(btn, "clicked", G_CALLBACK(on_result_clicked), NULL);
+        gtk_box_pack_start(GTK_BOX(box_testing_contain), btn, FALSE, FALSE, 5);
+        gtk_widget_show_all(box_testing_contain);
+    } else {
+        pending_results = g_list_append(pending_results, g_strdup(texte_resultat));
+    }
+}
+
+
+typedef struct {
     int nb_inputs;
     int **input;
     int *output;
@@ -313,6 +391,7 @@ typedef struct {
     int *nb_neurone;
     const gchar *name;
 } ThreadData;
+
 gpointer thread_function(gpointer data) {
     ThreadData *td = (ThreadData *)data;
     double **inputs_d = malloc(td->nb_inputs * sizeof(double *));
@@ -329,11 +408,11 @@ gpointer thread_function(gpointer data) {
     int *neurones_d = td->nb_neurone;
     
     principal(inputs_d, neurones_d, td->name, outputs_d, td->nb_layer, td->nb_inputs);
+    ajouter_resultat(g_strdup(td->name));
 
     for (int i = 0; i < td->nb_inputs; i++) free(inputs_d[i]);
     free(inputs_d);
     free(outputs_d);
-    free(neurones_d);
 
     for (int i = 0; i < td->nb_inputs; i++) {
         if (td->input[i]) free(td->input[i]);
@@ -471,19 +550,25 @@ void open_testing_window(GtkWidget *widget, gpointer data) {
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     
-    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_container_add(GTK_CONTAINER(window), vbox);
+    box_testing_contain = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(window), box_testing_contain);
+    if (pending_results) {
+        for (GList *l = pending_results; l != NULL; l = l->next) {
+            const char *texte_resultat = (const char *)l->data;
+            GtkWidget *btn = gtk_button_new_with_label(texte_resultat);
+            g_signal_connect(btn, "clicked", G_CALLBACK(on_result_clicked), NULL);
+            gtk_box_pack_start(GTK_BOX(box_testing_contain), btn, FALSE, FALSE, 5);
+        }
 
-    GtkWidget *label = gtk_label_new("Upload your image to solve !");
-    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 10);
+        gtk_widget_show_all(box_testing_contain);
+        g_list_free_full(pending_results, g_free);
+        pending_results = NULL;
+    }
 
     gtk_widget_show_all(window);
 }
 
      
-// ------------------------------
-// Nouvelle fenêtre : Entraînement
-// ------------------------------
 void open_training_window(GtkWidget *widget, gpointer data) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	GtkCssProvider *css_;
