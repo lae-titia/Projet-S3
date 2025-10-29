@@ -8,7 +8,9 @@ void open_resolution_window(GtkWidget *widget, gpointer data);
 void open_training_window(GtkWidget *widget, gpointer data);
 GtkWidget *box_testing_contain = NULL;
 GList *pending_results = NULL; 
-
+GtkWidget *main_window = NULL;
+GtkWidget *loading_label = NULL;
+GtkWidget *global_loading_window = NULL;
 //Struct used for the training section to give the result after learning
 typedef struct {
     GtkWidget *entry;
@@ -77,7 +79,9 @@ int main (int argc, char *argv[])
 
 	//Initialize the widgets
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	main_window = window;
 	gtk_window_set_title (GTK_WINDOW (window), "SolvLad");
+	
 	gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -475,6 +479,17 @@ void ajouter_resultat(const char *texte_resultat) {
     }
 }
 
+void show_training_finished_dialog() {
+    GtkWidget *dialog;
+    dialog = gtk_message_dialog_new(GTK_WINDOW(main_window),
+                                    GTK_DIALOG_MODAL,
+                                    GTK_MESSAGE_INFO,
+                                    GTK_BUTTONS_OK,
+                                    "Entraînement terminé !\n\nAllez dans \"Testing\" pour voir le résultat.");
+    gtk_window_set_title(GTK_WINDOW(dialog), "Information");
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
 //---- ajouter_resultat_idle:
 //      Used with g_idle_add to safely add a new result from another thread.
 //      It first checks if the result already exists in pending_results to avoid duplicates.
@@ -501,6 +516,10 @@ gboolean ajouter_resultat_idle(gpointer data) {
     }
 
     g_free((gpointer)texte_resultat);
+    if (loading_label) {
+    gtk_label_set_text(GTK_LABEL(loading_label),
+        "Entraînement terminé !\nRendez-vous dans \"Testing\" pour voir le résultat.");
+}
     return G_SOURCE_REMOVE;
 }
 
@@ -566,7 +585,7 @@ gboolean close_loading_window(gpointer data) {
 //      data structures, shows a loading window, then starts a new thread
 //      to train the neural network using 'thread_function'. The loading
 //      window will automatically close after 5 seconds.
-
+/*
 void on_submit(GtkWidget *widget, gpointer data) {
     (void)widget;
     GtkWidget **entries = (GtkWidget **)data;
@@ -588,8 +607,8 @@ void on_submit(GtkWidget *widget, gpointer data) {
     gtk_window_set_title(GTK_WINDOW(loading_window), "Chargement...");
     gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
     gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-    GtkWidget *label = gtk_label_new("Veuillez patienter...");
-    gtk_container_add(GTK_CONTAINER(loading_window), label);
+    loading_label = gtk_label_new("Veuillez patienter...");
+    gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
     gtk_widget_show_all(loading_window);
 
 
@@ -601,13 +620,56 @@ void on_submit(GtkWidget *widget, gpointer data) {
     td->nb_neurone = nb_neurone;
     td->name = g_strdup(name); 
 
-    g_timeout_add_seconds(5, close_loading_window, loading_window);
+   // g_timeout_add_seconds(5, close_loading_window, loading_window);
 
 
     GThread *thread = g_thread_new("worker", thread_function, td);
     
     g_thread_unref(thread);
 
+}*/
+void on_submit(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    GtkWidget **entries = (GtkWidget **)data;
+
+    const gchar *name = gtk_entry_get_text(GTK_ENTRY(entries[0]));
+    const gchar *inputs = gtk_entry_get_text(GTK_ENTRY(entries[1]));
+    const gchar *outputs = gtk_entry_get_text(GTK_ENTRY(entries[2]));
+    const gchar *nb_layers = gtk_entry_get_text(GTK_ENTRY(entries[3]));
+    const gchar *nb_neurones = gtk_entry_get_text(GTK_ENTRY(entries[4]));
+
+    int nb_inputs = 0;
+    int **input = get_input(inputs, &nb_inputs);
+    int *output = get_output(outputs);
+    int nb_layer = atoi(nb_layers);
+    int *nb_neurone = get_neurones(nb_neurones);
+
+    // ✅ Crée la fenêtre de chargement globale
+    GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(loading_window), "Chargement...");
+    gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
+    gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
+
+    // ✅ Label global pour affichage dynamique
+    loading_label = gtk_label_new("⏳ Entraînement en cours...\nVeuillez patienter...");
+    gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
+    gtk_widget_show_all(loading_window);
+
+    // ✅ Alloue les données du thread
+    ThreadData *td = g_malloc(sizeof(ThreadData));
+    td->nb_inputs = nb_inputs;
+    td->input = input;
+    td->output = output;
+    td->nb_layer = nb_layer;
+    td->nb_neurone = nb_neurone;
+    td->name = g_strdup(name);
+
+    // ✅ Lance le thread d’entraînement
+    GThread *thread = g_thread_new("worker", thread_function, td);
+    g_thread_unref(thread);
+
+    // ✅ Stocke la fenêtre dans une variable globale (optionnel)
+    global_loading_window = loading_window;
 }
 
 //---- open_training_network_window:
@@ -786,4 +848,8 @@ void open_training_window(GtkWidget *widget, gpointer data) {
         GTK_STYLE_PROVIDER_PRIORITY_USER);
 
     gtk_widget_show_all(window);
+
 }
+
+
+
