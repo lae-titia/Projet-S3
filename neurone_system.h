@@ -1,7 +1,7 @@
 #ifndef NEURONE_SYSTEM_H
 #define NEURONE_SYSTEM_H
 
-#include <glib-2.0/glib.h>
+//#include <glib-2.0/glib.h>
 
 struct Layer {
 	int nb_neurone;
@@ -27,8 +27,8 @@ void save_network(struct Layer *layers, int n_layers, const char *filename);
 struct Layer* load_network(const char *filename, int *n_layers_out);
 double *prediction(double *input, const char *file_name);
 void principal(double **inputs, int *neurones_par_couche,
-               const gchar *file_name, double *outputs,
-               int nb_layers, int nb_inputs);
+              const char *file_name, double *outputs,
+              int nb_layers, int nb_inputs);
 /*
 typedef struct neuron_t
 {

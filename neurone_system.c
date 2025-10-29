@@ -3,13 +3,15 @@
 #include <math.h>
 #include <time.h>
 #include "neurone_system.h"
-#include <glib-2.0/glib.h>
+//#include <glib-2.0/glib.h>
 
 #define PASSAGE 500000
 #define RATE 1
 
 
-
+//-------------------------------------------------------------
+//                      INITIALISIZE LAYER
+//-------------------------------------------------------------
 void init_layer(struct Layer *layer, int nb_input, int nb_neurones)
 {
 	layer->nb_neurone = nb_neurones;
@@ -28,8 +30,11 @@ void init_layer(struct Layer *layer, int nb_input, int nb_neurones)
         	}
     	}
 }
-	
-//Create a Layer Network
+
+//-------------------------------------------------------------
+//                   Create a Layer Network
+//-------------------------------------------------------------
+
 struct LayerNetwork *network(int nb_layers, int* nb_neurones_layers, int nb_neurones_init){
 	struct LayerNetwork *N_network = malloc(sizeof(struct LayerNetwork));
 	N_network->nb_layer= nb_layers;
@@ -50,6 +55,9 @@ struct LayerNetwork *network(int nb_layers, int* nb_neurones_layers, int nb_neur
 	return N_network;
 }
 
+//-------------------------------------------------------------
+//                      BASIC FUNCTIONS
+//-------------------------------------------------------------
 
 double sigmoid(double x) {
     return 1.0 / (1.0 + exp(-x));
@@ -58,6 +66,10 @@ double sigmoid(double x) {
 double dsigmoid(double y) {
     return y * (1.0 - y);
 }
+
+//-------------------------------------------------------------
+//                  BACKPROPAGATION FUNCTION
+//-------------------------------------------------------------
 
 void backprop(struct LayerNetwork *net, double *inputs, double target)
 {
@@ -97,6 +109,9 @@ void backprop(struct LayerNetwork *net, double *inputs, double target)
     free(delta);
 }
 
+//-------------------------------------------------------------
+//               FORWARD PROPAGATION FUNCTION
+//-------------------------------------------------------------
 
 
 void forward(struct LayerNetwork *net, double *inputs)
@@ -116,12 +131,14 @@ void forward(struct LayerNetwork *net, double *inputs)
     }
 }
 						
-	
+//-------------------------------------------------------------
+//                  TRAINING FUNCTION
+//-------------------------------------------------------------
+
 
 void traning(struct LayerNetwork *ln, double** inputs, double* outputs, int size_input)
 {
 	for (int epoch = 0; epoch < PASSAGE; epoch++) {
-        	double loss = 0.0;
 		
 		for (int i = 0; i < size_input; i++) {
             forward(ln, inputs[i]);
@@ -132,6 +149,9 @@ void traning(struct LayerNetwork *ln, double** inputs, double* outputs, int size
 	}
 }
 
+//-------------------------------------------------------------
+//           SAVING THE NETWORK TO A FILE TO USE IT 
+//-------------------------------------------------------------
 
 void save_network(struct Layer *layers, int n_layers, const char *filename) {
     FILE *f = fopen(filename, "wb");
@@ -149,6 +169,10 @@ void save_network(struct Layer *layers, int n_layers, const char *filename) {
 
     fclose(f);
 }
+
+//-------------------------------------------------------------
+//                 LOADING THE NETWORK TO USE IT  
+//-------------------------------------------------------------
 
 struct Layer* load_network(const char *filename, int *n_layers_out) {
     FILE *f = fopen(filename, "rb");
@@ -190,6 +214,11 @@ struct Layer* load_network(const char *filename, int *n_layers_out) {
     return layers;
 }
 
+//-------------------------------------------------------------
+//      PREDICT THE RESULT REGARDING TO THE NETWORK LOADED
+//-------------------------------------------------------------
+
+
 double *prediction(double *input, const char *file_name)
 {
     int n_layers;
@@ -210,22 +239,21 @@ double *prediction(double *input, const char *file_name)
         if (l > 0) free(values);
         values = next_values;
     }
+
     return values;
 }
 
+//-------------------------------------------------------------
+//      PRINCIPAL FUNTION TO START THE TRAINING AND SAVE IT
+//-------------------------------------------------------------
 
-void principal(double **inputs, int *neurones_par_couche,const gchar *file_name, double *outputs, int nb_layers, int nb_inputs)
+void principal(double **inputs, int *neurones_par_couche,const char *file_name, double *outputs, int nb_layers, int nb_inputs)
 {
-    printf("c'est dedans");
-    srand(0); //mouais 
+    srand(0); 
     struct LayerNetwork *net = network(nb_layers, neurones_par_couche, 2); 
-    for(int j = 0; j < nb_inputs; j++)
-    {
-        printf("[%g, %g]", inputs[j][0], inputs[j][1]);
-    }
     traning(net, inputs, outputs, nb_inputs);
     save_network(net->network, net->nb_layer, file_name);
-    printf("\n=== Résultats du réseau après entraînement ===\n");
+    printf("\n=== Result after training ===\n");
     for (int i = 0; i < nb_inputs; i++) {
     forward(net, inputs[i]);
     double result = net->network[net->nb_layer - 1].values[0];
@@ -235,71 +263,5 @@ void principal(double **inputs, int *neurones_par_couche,const gchar *file_name,
 }
 }
 
-/*
 
-int main(void)
-{
-    srand(time(NULL));
-
-   int neurones_par_couche[] = {2, 2, 1}; 
-   //struct LayerNetwork *net = network(3, neurones_par_couche, 2); 
-
-    double **inputs = malloc(4 * sizeof(double*)); 
-    for (int i = 0; i < 4; i++) 
-        inputs[i] = malloc(2 * sizeof(double)); 
-    inputs[0][0] = 0; inputs[0][1] = 0; 
-    inputs[1][0] = 0; inputs[1][1] = 1; 
-    inputs[2][0] = 1; inputs[2][1] = 0; 
-    inputs[3][0] = 1; inputs[3][1] = 1; 
-    double *outputs = malloc(4 * sizeof(double)); 
-    outputs[0] = 0; 
-    outputs[1] = 1; 
-    outputs[2] = 1; 
-    outputs[3] = 0; 
-   principal(inputs, neurones_par_couche, "xor", outputs, 3, 4);
-   // traning(net, inputs, outputs, 4);
-    //save_network(net->network, net->nb_layer, "");
-    int n_layers;
-    struct Layer *final_layer = load_network("xor", &n_layers);
-    for (int i = 0; i < n_layers; i++) 
-    {printf("Layer %d -> entrees=%d, neurones=%d\n", i, final_layer[i].nb_entrees, final_layer[i].nb_neurone);
-
-    for (int ni = 0; ni < final_layer[i].nb_neurone; ni++) {          // neurone index
-        for (int in = 0; in < final_layer[i].nb_entrees; in++) {      // input index
-            printf("Poids du neurone [%d] input[%d] : %f\n", ni, in, final_layer[i].weights[ni][in]);
-        }
-    }
-    for (int k = 0; k < final_layer[i].nb_neurone; k++) {
-        printf("Bias du noeud %d : %f\n", k, final_layer[i].biais[k]);
-    }}
-    double input1[2] = {0, 0};
-double input2[2] = {0, 1};
-double input3[2] = {1, 0};
-double input4[2] = {1, 1};
-
-double *out1 = prediction(final_layer, n_layers, input1);
-double *out2 = prediction(final_layer, n_layers, input2);
-double *out3 = prediction(final_layer, n_layers, input3);
-double *out4 = prediction(final_layer, n_layers, input4);
-
-printf("Résultat (0,0) = %.5f\n", out1[0]);
-printf("Résultat (0,1) = %.5f\n", out2[0]);
-printf("Résultat (1,0) = %.5f\n", out3[0]);
-printf("Résultat (1,1) = %.5f\n", out4[0]);
-
-free(out1);
-free(out2);
-free(out3);
-free(out4);
-
-
-
-
-
-
-	return 0;
-
-}
-
-
-	*/
+	
