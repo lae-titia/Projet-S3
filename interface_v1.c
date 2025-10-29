@@ -23,7 +23,7 @@ typedef struct {
     int *output;
     int nb_layer;
     int *nb_neurone;
-    const gchar *name;
+    gchar *name;
 } ThreadData;
 
 //---- save_pending_results_to_file() : 
@@ -541,7 +541,7 @@ gpointer thread_function(gpointer data) {
     free(td->output);
     free(td->nb_neurone);
 
-    cleanup_td:
+   // cleanup_td:
         if (td->name) g_free(td->name);
         g_free(td);
 

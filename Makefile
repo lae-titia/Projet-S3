@@ -1,26 +1,32 @@
-solver : solver.c
-	gcc main.c solver.c -o solver -Wall -Wextra -Werror
-
-# Nom de l'exécutable
-TARGET = interface
-
-# Fichiers source
-SRCS = neurone_system.c interface_v1.c
+# Compilateur
+CC = gcc
 
 # Options de compilation
-CFLAGS = -Wall -Wextra $(shell pkg-config --cflags gtk+-3.0)
+CFLAGS = -Wall -Wextra -Werror
 
-# Options de linkage
-LIBS = $(shell pkg-config --libs gtk+-3.0)
+# --- Programme 1 : solver ---
+SOLVER_TARGET = solver
+SOLVER_SRCS = main.c solver.c
 
-# Règle principale
-all: $(TARGET)
+# --- Programme 2 : interface ---
+INTERFACE_TARGET = interface
+INTERFACE_SRCS = neurone_system.c interface_v1.c
+GTK_CFLAGS = $(shell pkg-config --cflags gtk+-3.0)
+GTK_LIBS = $(shell pkg-config --libs gtk+-3.0)
 
-$(TARGET): $(SRCS)
-	gcc $(CFLAGS) $(SRCS) -o $(TARGET) $(LIBS)
+# --- Règle principale ---
+all: $(SOLVER_TARGET) $(INTERFACE_TARGET)
+
+# Compilation du solver
+$(SOLVER_TARGET): $(SOLVER_SRCS)
+	$(CC) $(CFLAGS) $(SOLVER_SRCS) -o $(SOLVER_TARGET) -lm
+
+# Compilation de l’interface GTK
+$(INTERFACE_TARGET): $(INTERFACE_SRCS)
+	$(CC) $(CFLAGS) $(GTK_CFLAGS) $(INTERFACE_SRCS) -o $(INTERFACE_TARGET) $(GTK_LIBS) -lm
 
 # Nettoyage
 clean:
-	rm -f $(TARGET) *.o
+	rm -f $(SOLVER_TARGET) $(INTERFACE_TARGET) *.o
 
 .PHONY: all clean
