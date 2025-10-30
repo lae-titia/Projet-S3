@@ -907,7 +907,8 @@ GdkPixbuf* rotate_pixbuf(GdkPixbuf *pixbuf, double angle_degrees)
 	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, new_w, new_h);
 	cairo_t *c_surface = cairo_create(surface);
 	
-	cairo_set_source_rgba(c_surface, 0, 0, 0, 0);
+	cairo_set_source_rgb(c_surface, 1, 1, 1); 
+	//cairo_set_source_rgba(c_surface, 0, 0, 0, 0);
 	cairo_paint(c_surface);
 	
 	cairo_translate(c_surface, new_w / 2.0, new_h / 2.0);
