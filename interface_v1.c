@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include "segmenter.h"
 //struct for image info in rotation
-
 typedef struct 
 {
 	GtkWidget *image;
@@ -31,8 +30,7 @@ typedef struct {
     char *label_text;
 } ResultData;
 
-//      Structure used to pass data to the training thread. 
-//      Contains all necessary information to train a neural network.
+
 typedef struct {
     int nb_inputs;
     int **input;
@@ -42,8 +40,6 @@ typedef struct {
     gchar *name;
 } ThreadData;
 
-//---- save_pending_results_to_file() : 
-//      the function saves all the current learning results to a file
 void save_pending_results_to_file() {
     FILE *f = fopen(RESULTS_FILE, "w");
     if (!f) return;
@@ -54,8 +50,7 @@ void save_pending_results_to_file() {
     fclose(f);
 }
 
-//---- save_pending_results_to_file() : 
-//      loads previously saved learning results from a file into memory
+
 void load_pending_results_from_file() {
     FILE *f = fopen(RESULTS_FILE, "r");
     if (!f) return;
@@ -68,12 +63,6 @@ void load_pending_results_from_file() {
     fclose(f);
 }
 
-
-
-
-//-------------------------------
-//         Main window 
-//-------------------------------
 int main (int argc, char *argv[])
 {
 	//Les widgets de l'interface 
@@ -100,13 +89,11 @@ int main (int argc, char *argv[])
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 		
-	// Main window
+	//Main window
 	label = gtk_label_new("Welcome to SolvLab");
 	space = gtk_label_new(NULL);
 	buttonUpload = gtk_button_new_with_label("Solve your grid");
 	buttonTraining = gtk_button_new_with_label("Training section");
-	
-	
 	box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(window), box);
 
@@ -115,8 +102,6 @@ int main (int argc, char *argv[])
 	gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
     	gtk_widget_set_valign(label, GTK_ALIGN_CENTER);
 	gtk_widget_set_name(label, "title");
-	
-	
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
 	gtk_widget_set_halign(hbox, GTK_ALIGN_CENTER);
         gtk_box_pack_start(GTK_BOX(box), hbox, FALSE, FALSE, 20);
@@ -132,10 +117,7 @@ int main (int argc, char *argv[])
 	gtk_widget_set_size_request(buttonTraining, 250, 100); 
         g_signal_connect(buttonTraining, "clicked", G_CALLBACK(open_training_window), NULL);
 	gtk_widget_set_name(buttonTraining, "btn-train");
-
 	gtk_box_pack_start(GTK_BOX(box), space, TRUE, TRUE, 0);
-	
-	// Using CSS to style the interface
 	css_ = gtk_css_provider_new();
 	gtk_css_provider_load_from_data(css_,
 	"window{\n"
@@ -168,38 +150,18 @@ int main (int argc, char *argv[])
     	gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
         GTK_STYLE_PROVIDER(css_),
         GTK_STYLE_PROVIDER_PRIORITY_USER);
-
-
-	// Open the window with its contents
 	gtk_widget_show_all(window);
 	gtk_main();
 	return 0;
 }
 
 
-
-// ------------------------------
-// Nouvelle fenêtre : Résolution
-// ------------------------------
-
-// ----------------------SOLVER SECTION----------------------------
-
-// _clicked_button_upload: Handles the "Upload" button click.
-// Opens a file chooser dialog to let the user select an image or PDF.
-// If a PDF is selected, it opens it using the system default viewer depending on the OS.
-// If an image is selected, it loads the image, scales it to 600x400, and displays it in the provided vbox.
-// The original upload button is hidden after the image is displayed.
-// Proper error handling is included for image loading failures.
-
 void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
 {
     	GtkWidget *vbox = GTK_WIDGET(user_data); 
     	GtkWidget *window = gtk_widget_get_toplevel(widget);
-
-	//rotation image
 	gtk_widget_add_events(window, GDK_KEY_PRESS_MASK);
 	g_signal_connect(window,"key-press-event", G_CALLBACK(_on_key_press),NULL);
-	//
     	GtkWidget *dialog = gtk_file_chooser_dialog_new(
         "Upload your image",
         GTK_WINDOW(window),
@@ -212,13 +174,9 @@ void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 
         GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	char *filenameFileToFree = gtk_file_chooser_get_filename(chooser);
 	char *filename = make_grayscale_image(gtk_file_chooser_get_filename(chooser));
-
-
-        const char *dot = strrchr(filename, '.');
+	const char *dot = strrchr(filename, '.');
         if (dot && g_ascii_strcasecmp(dot, ".pdf") == 0) {
 #ifdef __APPLE__
             char command[512];
@@ -243,25 +201,21 @@ void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
                 GdkPixbuf *scaled = gdk_pixbuf_scale_simple(pixbuf, 600, 400, GDK_INTERP_BILINEAR);
                 GtkWidget *image = gtk_image_new_from_pixbuf(scaled);
 		
-		//rotation image : ImageData storage
-		ImageData *img_data = g_new0(ImageData, 1);
+			ImageData *img_data = g_new0(ImageData, 1);
 		img_data->image = image;
 		img_data->pixbuf = gdk_pixbuf_copy(pixbuf);
 		img_data->angle = 0.0;
 
 		g_object_set_data(G_OBJECT(window), "image_data", img_data);
-		//
-
-                gtk_widget_hide(widget); 
+	        gtk_widget_hide(widget); 
                 gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, TRUE, 0);
                 gtk_widget_show(image);
-
-                g_object_unref(pixbuf);
+		g_object_unref(pixbuf);
                 g_object_unref(scaled);
             } 
 	    else 
 	    {
-		    g_print("Erreur chargement image : %s\n", error->message);
+		    g_print("Loading error: %s\n", error->message);
 		    g_error_free(error);
             }
         }
@@ -279,7 +233,7 @@ void open_resolution_window(GtkWidget *widget, gpointer data) {
     (void)widget;
     (void)data;
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Résolution d'image");
+    gtk_window_set_title(GTK_WINDOW(window), "Image resolution");
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     
@@ -298,28 +252,26 @@ void open_resolution_window(GtkWidget *widget, gpointer data) {
     gtk_widget_show_all(window);
 }
 
-// ----------------------TRAINING SECTION----------------------------
-
 
 // get_input: Converts a string of input pairs into a dynamically allocated 2D integer array.
-// Example input format: "(0,0), (1,0), (1,1)"
+//input format: "(0,0), (1,0), (1,1)"
 // Parameters:
-//   inputs      - The input string containing pairs of integers.
-//   nb_elmt_out - Pointer to an int where the number of input pairs will be stored.
-// Returns:
-//   A pointer to a dynamically allocated 2D array of integers [nb_elmt][2].
-// Notes:
-//   - The function counts the number of ')' characters to determine the number of pairs.
-//   - Curly braces and parentheses are replaced by spaces to facilitate parsing.
-//   - Each pair of integers is stored in input[i][0] and input[i][1].
-//   - Caller is responsible for freeing the allocated memory.
+//inputs      - The input string containing pairs of integers.
+//nb_elmt_out - Pointer to an int where the number of input pairs will be stored.
+//Returns:
+//A pointer to a dynamically allocated 2D array of integers [nb_elmt][2].
+//Notes:
+//- The function counts the number of ')' characters to determine the number of pairs.
+//- Curly braces and parentheses are replaced by spaces to facilitate parsing.
+//- Each pair of integers is stored in input[i][0] and input[i][1].
+//- Caller is responsible for freeing the allocated memory.
 
 int **get_input(const gchar *inputs, int *nb_elmt_out)
 {
     if (!inputs) return NULL;
-    int nb_elmt = 0;
-    for (int i = 0; inputs[i]; i++) {
-        if (inputs[i] == ')')
+    int nb_elmt=0;
+    for (int i =0; inputs[i]; i++) {
+        if (inputs[i]== ')')
             nb_elmt++;
     }
     if (nb_elmt_out)
@@ -353,17 +305,17 @@ int **get_input(const gchar *inputs, int *nb_elmt_out)
 }
 
 
-// get_output: Converts a string of output values into a dynamically allocated integer array.
-// Example input format: "0, 1, 1, 0"
-// Parameters:
-//   outputs - The input string containing integer output values.
+//get_output: converts a string of output values into a dynamically allocated integer array.
+//input format: "0, 1, 1, 0"
+//Parameters:
+//outputs - The input string containing integer output values.
 // Returns:
-//   A pointer to a dynamically allocated integer array containing the parsed outputs.
-// Notes:
-//   - Curly braces and parentheses are replaced with spaces to facilitate parsing.
-//   - The array size is currently fixed to 100 elements; adjust if needed.
-//   - Caller is responsible for freeing the allocated memory.
-//   - The function prints the parsed outputs for debugging purposes.
+//A pointer to a dynamically allocated integer array containing the parsed outputs.
+//Notes:
+//-parentheses are replaced with spaces to facilitate parsing.
+//- array size is currently fixed to 100 elements; adjust if needed.
+//- caller is responsible for freeing the allocated memory.
+//- The function prints the parsed outputs for debugging purposes.
 
 int *get_output(const gchar *outputs)
 {
@@ -393,13 +345,13 @@ int *get_output(const gchar *outputs)
 // get_neurones: Parses a string representing the number of neurons per layer into an integer array.
 // Example input format: "2, 3, 1"
 // Parameters:
-//   nb_neurones - The input string containing the number of neurons for each layer.
+//nb_neurones - The input string containing the number of neurons for each layer.
 // Returns:
-//   A pointer to a dynamically allocated integer array containing the parsed neuron counts.
+// A pointer to a dynamically allocated integer array containing the parsed neuron counts.
 // Notes:
-//   - Curly braces and parentheses are replaced with spaces to simplify parsing.
-//   - The array size is currently fixed at 100 elements; adjust if needed for larger networks.
-//   - Caller is responsible for freeing the allocated memory.
+//- parentheses are replaced with spaces to simplify parsing.
+//- array size is currently fixed at 100 elements; adjust if needed for larger networks.
+//- Caller is responsible for freeing the allocated memory.
 
 int *get_neurones(const gchar *nb_neurones)
 {
@@ -429,10 +381,11 @@ int *get_neurones(const gchar *nb_neurones)
     return array;
 }
 
-//---- on_result: 
-//      Uses the neural network to predict the output for the user's input
-//      and displays the result in a new window. The input is read from data->entry.
-//      The function is called by the on_result_clicked function
+
+//Uses the neural network to predict the output for the user's input and displays the result in a new window
+// The input is read from data->entry.
+
+// the function is called by the on_result_clicked function
 
 void on_result(GtkWidget *button, gpointer user_data)
 {  (void)button;
@@ -462,11 +415,10 @@ void on_result(GtkWidget *button, gpointer user_data)
     
 }
 
-//---- on_result_clicked: 
-//      This function is called when a result button is clicked in the testing section.
-//      It opens a new window where the user can enter input for the neural network.
-//      The "Result" button in the window is connected to on_result(), which computes
-//      and displays the neural network's prediction for the entered input.
+ 
+//This function is called when a result button is clicked in the testing section.
+//It opens a new window where the user can enter input for the neural network.
+//The "Result" button in the window is connected to on_result(), which computes and displays the neural network's prediction for the entered input.
 
 void on_result_clicked(GtkWidget *button, gpointer user_data) {
     (void)user_data;
@@ -500,10 +452,9 @@ void on_result_clicked(GtkWidget *button, gpointer user_data) {
     gtk_widget_show_all(window);
 }
 
-//---- ajouter_resultat: 
-//      Adds a new result button to the testing window if it exists.
-//      If the testing window is not yet created, the result is stored in 
-//      the pending_results list for later use.
+ 
+//Adds a new result button to the testing window if it exists.
+//If the testing window is not yet created, the result is stored in the pending_results list for later use
 
 void ajouter_resultat(const char *texte_resultat) {
     if (box_testing_contain) {
@@ -527,10 +478,6 @@ void show_training_finished_dialog() {
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
 }
-//---- ajouter_resultat_idle:
-//      Used with g_idle_add to safely add a new result from another thread.
-//      It first checks if the result already exists in pending_results to avoid duplicates.
-//      The result is saved to file and a button is added to the testing window if available.
 
 gboolean ajouter_resultat_idle(gpointer data) {
     const char *texte_resultat = (const char *)data;
@@ -560,13 +507,8 @@ gboolean ajouter_resultat_idle(gpointer data) {
     return G_SOURCE_REMOVE;
 }
 
-//---- thread_function:
-//      Function executed in a separate thread to train a neural network.
-//      It converts integer inputs/outputs to double, calls the 'principal'
-//      function to perform training, and then schedules the result to be
-//      added to the GTK interface using g_idle_add. After training, it frees
-//      all dynamically allocated memory associated with the ThreadData structure.
 
+//Function executed in a separate thread to train a neural network It converts integer inputs/outputs to double
 gpointer thread_function(gpointer data) {
     ThreadData *td = (ThreadData *)data;
     double **inputs_d = malloc(td->nb_inputs * sizeof(double *));
@@ -583,7 +525,6 @@ gpointer thread_function(gpointer data) {
     int *neurones_d = td->nb_neurone;
     
     principal(inputs_d, neurones_d, td->name, outputs_d, td->nb_layer, td->nb_inputs);
-    //ajouter_resultat(g_strdup(td->name));
     g_idle_add((GSourceFunc)ajouter_resultat_idle, g_strdup(td->name));
 
     for (int i = 0; i < td->nb_inputs; i++) free(inputs_d[i]);
@@ -597,7 +538,6 @@ gpointer thread_function(gpointer data) {
     free(td->output);
     free(td->nb_neurone);
 
-   // cleanup_td:
         if (td->name) g_free(td->name);
         g_free(td);
 
@@ -606,22 +546,13 @@ gpointer thread_function(gpointer data) {
     return NULL;
 }
 
-//---- close_loading_window:
-//      Callback to close/destroy the temporary loading window after training
-//      is finished or after a timeout.
 gboolean close_loading_window(gpointer data) {
     GtkWidget *loading_window = GTK_WIDGET(data);
     gtk_widget_destroy(loading_window);
     return FALSE;
 }
 
-//---- on_submit:
-//      Callback triggered when the user submits the training form.
-//      It reads all entries from the form (network name, input/output values,
-//      number of layers, neurons per layer), converts them into the proper
-//      data structures, shows a loading window, then starts a new thread
-//      to train the neural network using 'thread_function'. The loading
-//      window will automatically close after 5 seconds.
+//Callback triggered when the user submits the training form.
 /*
 void on_submit(GtkWidget *widget, gpointer data) {
     (void)widget;
@@ -680,19 +611,13 @@ void on_submit(GtkWidget *widget, gpointer data) {
     int *output = get_output(outputs);
     int nb_layer = atoi(nb_layers);
     int *nb_neurone = get_neurones(nb_neurones);
-
-    // Crée la fenêtre de chargement globale
     GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(loading_window), "Chargement...");
     gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
     gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-
-    // ✅ Label global pour affichage dynamique
-    loading_label = gtk_label_new("⏳ Entraînement en cours...\nVeuillez patienter...");
+    loading_label = gtk_label_new("Entraînement en cours...\nVeuillez patienter...");
     gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
     gtk_widget_show_all(loading_window);
-
-    // ✅ Alloue les données du thread
     ThreadData *td = g_malloc(sizeof(ThreadData));
     td->nb_inputs = nb_inputs;
     td->input = input;
@@ -700,20 +625,13 @@ void on_submit(GtkWidget *widget, gpointer data) {
     td->nb_layer = nb_layer;
     td->nb_neurone = nb_neurone;
     td->name = g_strdup(name);
-
-    // Lance le thread d’entraînement
     GThread *thread = g_thread_new("worker", thread_function, td);
     g_thread_unref(thread);
-
-    // Stocke la fenêtre dans une variable globale (optionnel)
     global_loading_window = loading_window;
 }
 
-//---- open_training_network_window:
-//      Opens a new window allowing the user to create and configure a neural network for training.
-//      The window contains entries for the network name, input values, expected output values,
-//      number of layers, and number of neurons per layer. When the "Start learning" button is clicked,
-//      the on_submit callback is triggered to start the training in a separate thread.
+
+//Opens a new window allowing the user to create and configure a neural network for training
 
 void open_training_network_window(GtkWidget *widget, gpointer data) {
     (void)data;
@@ -725,25 +643,17 @@ void open_training_network_window(GtkWidget *widget, gpointer data) {
     
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(window), vbox);
-
-
     GtkWidget *label_name = gtk_label_new("Name your training");
     GtkWidget *entry_name = gtk_entry_new();
-
-    //Values to learn
-    GtkWidget *label_input = gtk_label_new("Entry the input");
+//Values to learn
+    GtkWidget *label_input = gtk_label_new("Enter the input");
     GtkWidget *entry_input = gtk_entry_new();
-
-    GtkWidget *label_output = gtk_label_new("Entry the output expected");
+    GtkWidget *label_output = gtk_label_new("Enter the output expected");
     GtkWidget *entry_output = gtk_entry_new();
-
-    //To create the network
-    GtkWidget *label_nb_layer = gtk_label_new("Entry the number of layers");
+    GtkWidget *label_nb_layer = gtk_label_new("Enter the number of layers");
     GtkWidget *entry_nb_layer = gtk_entry_new();
-
-    GtkWidget *label_nb_neurones = gtk_label_new("Entry the number of neurones per layers (ex: 2, 3, 1)");
+    GtkWidget *label_nb_neurones = gtk_label_new("Enter the number of neurones per layers (ex: 2, 3, 1)");
     GtkWidget *entry_nb_neurones = gtk_entry_new();
-
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
@@ -781,12 +691,8 @@ void open_training_network_window(GtkWidget *widget, gpointer data) {
     gtk_widget_show_all(window);
 }
 
-//---- open_testing_window:
-//      Opens the testing window where the user can see all previously trained networks as buttons.
-//      Each button corresponds to a network and can be clicked to open an input field for testing
-//      the network. The buttons are dynamically recreated from the saved list 'pending_results'
-//      each time the window is opened.
 
+//Opens the testing window where the user can see all previously trained networks as buttons
 void open_testing_window(GtkWidget *widget, gpointer data) {
     (void)widget;
     (void)data;
@@ -797,9 +703,7 @@ void open_testing_window(GtkWidget *widget, gpointer data) {
     
     box_testing_contain = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(window), box_testing_contain);
-
-    // À chaque ouverture de fenêtre, on recrée les boutons à partir de pending_results
-    for (GList *l = pending_results; l != NULL; l = l->next) {
+	for (GList *l = pending_results; l != NULL; l = l->next) {
         const char *texte_resultat = (const char *)l->data;
         GtkWidget *btn = gtk_button_new_with_label(texte_resultat);
         g_signal_connect(btn, "clicked", G_CALLBACK(on_result_clicked), NULL);
@@ -810,7 +714,7 @@ void open_testing_window(GtkWidget *widget, gpointer data) {
 }
 
 
-//The window called by the training button
+
 
 void open_training_window(GtkWidget *widget, gpointer data) {
     (void)widget;
@@ -908,9 +812,7 @@ GdkPixbuf* rotate_pixbuf(GdkPixbuf *pixbuf, double angle_degrees)
 	cairo_t *c_surface = cairo_create(surface);
 	
 	cairo_set_source_rgb(c_surface, 1, 1, 1); 
-	//cairo_set_source_rgba(c_surface, 0, 0, 0, 0);
 	cairo_paint(c_surface);
-	
 	cairo_translate(c_surface, new_w / 2.0, new_h / 2.0);
 	
 	cairo_rotate(c_surface, angle);
@@ -931,6 +833,7 @@ GdkPixbuf* rotate_pixbuf(GdkPixbuf *pixbuf, double angle_degrees)
 gboolean _on_key_press(GtkWidget *CurrentWidget, GdkEventKey *KeyEvent, gpointer data_useless)
 {
 	GtkWidget *window = gtk_widget_get_toplevel(CurrentWidget);
+	(void)data_useless;
 	ImageData *img_data = g_object_get_data(G_OBJECT(window), "image_data");
 	if (!img_data || !img_data->pixbuf) 
 	{
