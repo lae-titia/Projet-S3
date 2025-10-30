@@ -743,7 +743,8 @@ void process_grid_with_hough(ImageData *data, GdkRectangle zone) {
 
 
 // --- PROGRAMME PRINCIPAL ---
-int main(int argc, char *argv[]) {
+int cut_grid(int argc, char *argv[])
+{
     // 1. Gestion des arguments
     if (argc != 2) {
         g_printerr("Usage: %s <image.bmp>\n", argv[0]);

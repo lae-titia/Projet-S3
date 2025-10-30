@@ -8,7 +8,7 @@ CFLAGS = -Wall -Wextra -Werror
 SOLVER_TARGET = solver
 SOLVER_SRCS = main.c solver.c
 
-# --- Programme 2 : interface ---
+#--- Programme 2 : interface ---
 INTERFACE_TARGET = interface
 INTERFACE_SRCS = neurone_system.c interface_v1.c
 GTK_CFLAGS = $(shell pkg-config --cflags gtk+-3.0)
@@ -25,6 +25,8 @@ $(SOLVER_TARGET): $(SOLVER_SRCS)
 $(INTERFACE_TARGET): $(INTERFACE_SRCS)
 	$(CC) $(CFLAGS) $(GTK_CFLAGS) $(INTERFACE_SRCS) -o $(INTERFACE_TARGET) $(GTK_LIBS) -lm
 
+FINAL:
+	gcc -o FINAL interface_v1.c neurone_system.c traitement_image.c segmenter.c $$(pkg-config --cflags --libs gtk+-3.0) $$(pkg-config glib-2.0 --libs) -lSDL2_image -lSDL2 -lm
 # Nettoyage
 clean:
 	rm -f $(SOLVER_TARGET) $(INTERFACE_TARGET) *.o

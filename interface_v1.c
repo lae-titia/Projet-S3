@@ -3,6 +3,20 @@
 #include "neurone_system.h"
 #include <glib-2.0/glib.h>
 #define RESULTS_FILE "results.txt"
+#include <cairo.h>
+#include <math.h>
+#include "interface_v1.h"
+#include "traitement_image.h"
+#include <stdio.h>
+#include "segmenter.h"
+//struct for image info in rotation
+
+typedef struct 
+{
+	GtkWidget *image;
+	GdkPixbuf *pixbuf;
+	double angle;
+} ImageData; 
 
 void open_resolution_window(GtkWidget *widget, gpointer data);
 void open_training_window(GtkWidget *widget, gpointer data);
@@ -179,10 +193,14 @@ int main (int argc, char *argv[])
 
 void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
 {
-    GtkWidget *vbox = GTK_WIDGET(user_data); 
-    GtkWidget *window = gtk_widget_get_toplevel(widget);
+    	GtkWidget *vbox = GTK_WIDGET(user_data); 
+    	GtkWidget *window = gtk_widget_get_toplevel(widget);
 
-    GtkWidget *dialog = gtk_file_chooser_dialog_new(
+	//rotation image
+	gtk_widget_add_events(window, GDK_KEY_PRESS_MASK);
+	g_signal_connect(window,"key-press-event", G_CALLBACK(_on_key_press),NULL);
+	//
+    	GtkWidget *dialog = gtk_file_chooser_dialog_new(
         "Upload your image",
         GTK_WINDOW(window),
         GTK_FILE_CHOOSER_ACTION_OPEN,
@@ -192,8 +210,13 @@ void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
     );
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+
         GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
-        char *filename = gtk_file_chooser_get_filename(chooser);
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	char *filenameFileToFree = gtk_file_chooser_get_filename(chooser);
+	char *filename = make_grayscale_image(gtk_file_chooser_get_filename(chooser));
+
 
         const char *dot = strrchr(filename, '.');
         if (dot && g_ascii_strcasecmp(dot, ".pdf") == 0) {
@@ -210,12 +233,24 @@ void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
             snprintf(command, sizeof(command), "start \"\" \"%s\"", filename);
             system(command);
 #endif
-        } else {
+        }
+	else 
+	{
             GError *error = NULL;
             GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(filename, &error);
-            if (pixbuf) {
+            if (pixbuf) 	
+	    {
                 GdkPixbuf *scaled = gdk_pixbuf_scale_simple(pixbuf, 600, 400, GDK_INTERP_BILINEAR);
                 GtkWidget *image = gtk_image_new_from_pixbuf(scaled);
+		
+		//rotation image : ImageData storage
+		ImageData *img_data = g_new0(ImageData, 1);
+		img_data->image = image;
+		img_data->pixbuf = gdk_pixbuf_copy(pixbuf);
+		img_data->angle = 0.0;
+
+		g_object_set_data(G_OBJECT(window), "image_data", img_data);
+		//
 
                 gtk_widget_hide(widget); 
                 gtk_box_pack_start(GTK_BOX(vbox), image, TRUE, TRUE, 0);
@@ -223,13 +258,15 @@ void _clicked_button_upload(GtkWidget *widget, gpointer user_data)
 
                 g_object_unref(pixbuf);
                 g_object_unref(scaled);
-            } else {
-                g_print("Erreur chargement image : %s\n", error->message);
-                g_error_free(error);
+            } 
+	    else 
+	    {
+		    g_print("Erreur chargement image : %s\n", error->message);
+		    g_error_free(error);
             }
         }
 
-        g_free(filename);
+        g_free(filenameFileToFree);
     }
 
     gtk_widget_destroy(dialog);
@@ -644,7 +681,7 @@ void on_submit(GtkWidget *widget, gpointer data) {
     int nb_layer = atoi(nb_layers);
     int *nb_neurone = get_neurones(nb_neurones);
 
-    // ✅ Crée la fenêtre de chargement globale
+    // Crée la fenêtre de chargement globale
     GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(loading_window), "Chargement...");
     gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
@@ -664,11 +701,11 @@ void on_submit(GtkWidget *widget, gpointer data) {
     td->nb_neurone = nb_neurone;
     td->name = g_strdup(name);
 
-    // ✅ Lance le thread d’entraînement
+    // Lance le thread d’entraînement
     GThread *thread = g_thread_new("worker", thread_function, td);
     g_thread_unref(thread);
 
-    // ✅ Stocke la fenêtre dans une variable globale (optionnel)
+    // Stocke la fenêtre dans une variable globale (optionnel)
     global_loading_window = loading_window;
 }
 
@@ -848,7 +885,90 @@ void open_training_window(GtkWidget *widget, gpointer data) {
         GTK_STYLE_PROVIDER_PRIORITY_USER);
 
     gtk_widget_show_all(window);
+}
 
+
+
+
+GdkPixbuf* rotate_pixbuf(GdkPixbuf *pixbuf, double angle_degrees)
+{
+	if (!pixbuf) return NULL;
+	
+	int w = gdk_pixbuf_get_width(pixbuf);
+	int h = gdk_pixbuf_get_height(pixbuf);
+	
+	double angle = angle_degrees * (M_PI / 180.0);
+	
+	double cos_a = fabs(cos(angle));
+	double sin_a = fabs(sin(angle));
+	int new_w = (int)(w * cos_a + h * sin_a);
+	int new_h = (int)(w * sin_a + h * cos_a);
+	
+	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, new_w, new_h);
+	cairo_t *c_surface = cairo_create(surface);
+	
+	cairo_set_source_rgba(c_surface, 0, 0, 0, 0);
+	cairo_paint(c_surface);
+	
+	cairo_translate(c_surface, new_w / 2.0, new_h / 2.0);
+	
+	cairo_rotate(c_surface, angle);
+	
+	cairo_translate(c_surface, -w / 2.0, -h / 2.0);
+	
+    	gdk_cairo_set_source_pixbuf(c_surface, pixbuf, 0, 0);
+    	cairo_paint(c_surface);
+
+    	cairo_destroy(c_surface);
+
+    	GdkPixbuf *rotated = gdk_pixbuf_get_from_surface(surface, 0, 0, new_w, new_h);
+    	cairo_surface_destroy(surface);
+
+    	return rotated;
+}
+//input gestion
+gboolean _on_key_press(GtkWidget *CurrentWidget, GdkEventKey *KeyEvent, gpointer data_useless)
+{
+	GtkWidget *window = gtk_widget_get_toplevel(CurrentWidget);
+	ImageData *img_data = g_object_get_data(G_OBJECT(window), "image_data");
+	if (!img_data || !img_data->pixbuf) 
+	{
+        	g_print("Aucune image chargée.\n");
+        	return FALSE;
+    	}
+
+    	double angle_step = 0.0;
+	if (KeyEvent->keyval == GDK_KEY_Return)
+	{
+		GdkPixbuf *rotated_to_save = rotate_pixbuf(img_data->pixbuf, img_data->angle);
+	
+		gdk_pixbuf_save(/*img_data->pixbuf*/rotated_to_save, "grayscale_rotated.bmp", "bmp", NULL, NULL);
+		printf("image saved in grayscale_rotated.bmp");
+		char *inputForSegmenter[] = {"segmenter", "grayscale_rotated.bmp"};
+		cut_grid(2, inputForSegmenter);
+	}
+    	if (KeyEvent->keyval == GDK_KEY_r || KeyEvent->keyval == GDK_KEY_R)
+        	angle_step = 1;
+    	else if (KeyEvent->keyval == GDK_KEY_l || KeyEvent->keyval == GDK_KEY_L)
+    	    angle_step = -1;
+    	else
+    	    return FALSE;
+
+    	img_data->angle += angle_step;
+
+    	GdkPixbuf *rotated = rotate_pixbuf(img_data->pixbuf, img_data->angle);
+    	if (rotated) 
+	{
+    	   	gtk_image_set_from_pixbuf(GTK_IMAGE(img_data->image), rotated);
+    	    	g_object_unref(rotated);
+   	    	g_print("Image tournée à %.1f degrés\n", img_data->angle);
+  	} 
+	else 
+	{
+        	g_print("Erreur lors de la rotation de l'image !\n");
+   	}
+	
+	return TRUE;
 }
 
 
