@@ -9,9 +9,7 @@
 #define RATE 1
 
 
-//-------------------------------------------------------------
-//                      INITIALISIZE LAYER
-//-------------------------------------------------------------
+//INITIALISIZE LAYER
 void init_layer(struct Layer *layer, int nb_input, int nb_neurones)
 {
 	layer->nb_neurone = nb_neurones;
@@ -31,10 +29,8 @@ void init_layer(struct Layer *layer, int nb_input, int nb_neurones)
     	}
 }
 
-//-------------------------------------------------------------
-//                   Create a Layer Network
-//-------------------------------------------------------------
 
+//Create a Layer Network
 struct LayerNetwork *network(int nb_layers, int* nb_neurones_layers, int nb_neurones_init){
 	struct LayerNetwork *N_network = malloc(sizeof(struct LayerNetwork));
 	N_network->nb_layer= nb_layers;
@@ -55,9 +51,7 @@ struct LayerNetwork *network(int nb_layers, int* nb_neurones_layers, int nb_neur
 	return N_network;
 }
 
-//-------------------------------------------------------------
-//                      BASIC FUNCTIONS
-//-------------------------------------------------------------
+
 
 double sigmoid(double x) {
     return 1.0 / (1.0 + exp(-x));
@@ -67,10 +61,8 @@ double dsigmoid(double y) {
     return y * (1.0 - y);
 }
 
-//-------------------------------------------------------------
-//                  BACKPROPAGATION FUNCTION
-//-------------------------------------------------------------
 
+//BACKPROPAGATION FUNCTION
 void backprop(struct LayerNetwork *net, double *inputs, double target)
 {
     int L = net->nb_layer;
@@ -109,11 +101,8 @@ void backprop(struct LayerNetwork *net, double *inputs, double target)
     free(delta);
 }
 
-//-------------------------------------------------------------
-//               FORWARD PROPAGATION FUNCTION
-//-------------------------------------------------------------
 
-
+//FORWARD PROPAGATION FUNCTION
 void forward(struct LayerNetwork *net, double *inputs)
 {
 	for (int l = 0; l < net->nb_layer; l++) {
@@ -131,11 +120,8 @@ void forward(struct LayerNetwork *net, double *inputs)
     }
 }
 						
-//-------------------------------------------------------------
-//                  TRAINING FUNCTION
-//-------------------------------------------------------------
 
-
+//TRAINING FUNCTION
 void traning(struct LayerNetwork *ln, double** inputs, double* outputs, int size_input)
 {
 	for (int epoch = 0; epoch < PASSAGE; epoch++) {
@@ -149,10 +135,7 @@ void traning(struct LayerNetwork *ln, double** inputs, double* outputs, int size
 	}
 }
 
-//-------------------------------------------------------------
-//           SAVING THE NETWORK TO A FILE TO USE IT 
-//-------------------------------------------------------------
-
+//SAVING THE NETWORK TO A FILE TO USE IT 
 void save_network(struct Layer *layers, int n_layers, const char *filename) {
     FILE *f = fopen(filename, "wb");
     if (!f) { perror("fopen save"); return; }
@@ -170,9 +153,7 @@ void save_network(struct Layer *layers, int n_layers, const char *filename) {
     fclose(f);
 }
 
-//-------------------------------------------------------------
-//                 LOADING THE NETWORK TO USE IT  
-//-------------------------------------------------------------
+// LOADING THE NETWORK TO USE IT  
 
 struct Layer* load_network(const char *filename, int *n_layers_out) {
     FILE *f = fopen(filename, "rb");
@@ -214,10 +195,8 @@ struct Layer* load_network(const char *filename, int *n_layers_out) {
     return layers;
 }
 
-//-------------------------------------------------------------
-//      PREDICT THE RESULT REGARDING TO THE NETWORK LOADED
-//-------------------------------------------------------------
 
+//PREDICT THE RESULT REGARDING TO THE NETWORK LOADED
 
 double *prediction(double *input, const char *file_name)
 {
@@ -243,10 +222,8 @@ double *prediction(double *input, const char *file_name)
     return values;
 }
 
-//-------------------------------------------------------------
-//      PRINCIPAL FUNTION TO START THE TRAINING AND SAVE IT
-//-------------------------------------------------------------
 
+//FUNTION TO START THE TRAINING AND SAVE IT
 void principal(double **inputs, int *neurones_par_couche,const char *file_name, double *outputs, int nb_layers, int nb_inputs)
 {
     srand(0); 
