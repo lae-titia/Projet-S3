@@ -43,7 +43,6 @@ typedef struct {
 void save_pending_results_to_file() {
     FILE *f = fopen(RESULTS_FILE, "w");
     if (!f) return;
-
     for (GList *l = pending_results; l != NULL; l = l->next) {
         fprintf(f, "%s\n", (char *)l->data);
     }
@@ -58,14 +57,14 @@ void load_pending_results_from_file() {
     char buffer[256];
     while (fgets(buffer, sizeof(buffer), f)) {
         buffer[strcspn(buffer, "\n")] = '\0';  
-        pending_results = g_list_append(pending_results, g_strdup(buffer));
+        pending_results= g_list_append(pending_results, g_strdup(buffer));
     }
     fclose(f);
 }
 
 int main (int argc, char *argv[])
 {
-	//Les widgets de l'interface 
+	//interface widgets 
 	GtkWidget *window;
 	GtkWidget *buttonUpload;
 	GtkWidget *buttonTraining;
@@ -74,17 +73,11 @@ int main (int argc, char *argv[])
 	GtkWidget *space;
 	GtkCssProvider *css_;
 	GtkWidget *hbox;	
-	
 	gtk_init(&argc, &argv);
-
-    load_pending_results_from_file();
-
-
-	//Initialize the widgets
+	load_pending_results_from_file();	
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	main_window = window;
 	gtk_window_set_title (GTK_WINDOW (window), "SolvLad");
-	
 	gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -96,8 +89,6 @@ int main (int argc, char *argv[])
 	buttonTraining = gtk_button_new_with_label("Training section");
 	box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(window), box);
-
-
 	gtk_box_pack_start (GTK_BOX(box), label, TRUE, TRUE, 0);
 	gtk_widget_set_halign(label, GTK_ALIGN_CENTER);
     	gtk_widget_set_valign(label, GTK_ALIGN_CENTER);
@@ -145,9 +136,7 @@ int main (int argc, char *argv[])
     	gtk_style_context_add_provider(context,
         GTK_STYLE_PROVIDER(css_),
         GTK_STYLE_PROVIDER_PRIORITY_USER);
-
-    
-    	gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+	gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
         GTK_STYLE_PROVIDER(css_),
         GTK_STYLE_PROVIDER_PRIORITY_USER);
 	gtk_widget_show_all(window);
@@ -392,7 +381,6 @@ void on_result(GtkWidget *button, gpointer user_data)
     ResultData *data = (ResultData *)user_data;
 
     const char *input_text = gtk_entry_get_text(GTK_ENTRY(data->entry));
-
     int nb_inputs = 0;
     int **input = get_input(input_text, &nb_inputs);
     double input_d[2];
@@ -416,39 +404,31 @@ void on_result(GtkWidget *button, gpointer user_data)
 }
 
  
-//This function is called when a result button is clicked in the testing section.
-//It opens a new window where the user can enter input for the neural network.
-//The "Result" button in the window is connected to on_result(), which computes and displays the neural network's prediction for the entered input.
-
+//This function is called when a result button is clicked in the testing section
+//It opens a new window where the user can enter input for the neural network
+//The "Result" button in the window is connected to on_result(), which computes and displays the neural network's prediction for the entered input
 void on_result_clicked(GtkWidget *button, gpointer user_data) {
     (void)user_data;
     const char *label = gtk_button_get_label(GTK_BUTTON(button));
-
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Testing Section");
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(window), vbox);
-
-    GtkWidget *label_input = gtk_label_new("Entry your input");
+    GtkWidget *label_input = gtk_label_new("Enter your input");
     GtkWidget *entry_input = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(vbox), label_input, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), entry_input, FALSE, FALSE, 0);
-
     GtkWidget *button_result = gtk_button_new_with_label("Result");
     gtk_widget_set_size_request(button_result, 200, 50);
     gtk_box_pack_start(GTK_BOX(vbox), button_result, FALSE, FALSE, 10);
     gtk_widget_set_halign(button_result, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(button_result, GTK_ALIGN_CENTER);
-
     ResultData *data = g_malloc(sizeof(ResultData));
     data->entry = entry_input;
     data->label_text = g_strdup(label); 
-
     g_signal_connect(button_result, "clicked", G_CALLBACK(on_result), data);
-
     gtk_widget_show_all(window);
 }
 
@@ -466,19 +446,19 @@ void ajouter_resultat(const char *texte_resultat) {
         pending_results = g_list_append(pending_results, g_strdup(texte_resultat));
     }
 }
-
+/*
 void show_training_finished_dialog() {
     GtkWidget *dialog;
     dialog = gtk_message_dialog_new(GTK_WINDOW(main_window),
                                     GTK_DIALOG_MODAL,
                                     GTK_MESSAGE_INFO,
                                     GTK_BUTTONS_OK,
-                                    "Entraînement terminé !\n\nAllez dans \"Testing\" pour voir le résultat.");
+                                    "Training complete !\n\nGo to \"Testing\" to see the result.");
     gtk_window_set_title(GTK_WINDOW(dialog), "Information");
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
 }
-
+*/
 gboolean ajouter_resultat_idle(gpointer data) {
     const char *texte_resultat = (const char *)data;
 
@@ -502,13 +482,13 @@ gboolean ajouter_resultat_idle(gpointer data) {
     g_free((gpointer)texte_resultat);
     if (loading_label) {
     gtk_label_set_text(GTK_LABEL(loading_label),
-        "Entraînement terminé !\nRendez-vous dans \"Testing\" pour voir le résultat.");
+        "Training complete !\nGo to \"Testing\" to see the result.");
 }
     return G_SOURCE_REMOVE;
 }
 
 
-//Function executed in a separate thread to train a neural network It converts integer inputs/outputs to double
+//It converts integer inputs/outputs to double
 gpointer thread_function(gpointer data) {
     ThreadData *td = (ThreadData *)data;
     double **inputs_d = malloc(td->nb_inputs * sizeof(double *));
@@ -552,7 +532,7 @@ gboolean close_loading_window(gpointer data) {
     return FALSE;
 }
 
-//Callback triggered when the user submits the training form.
+//Callback triggered when the user submits the training form
 /*
 void on_submit(GtkWidget *widget, gpointer data) {
     (void)widget;
@@ -572,10 +552,10 @@ void on_submit(GtkWidget *widget, gpointer data) {
     
 
     GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(loading_window), "Chargement...");
+    gtk_window_set_title(GTK_WINDOW(loading_window), "Loading...");
     gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
     gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-    loading_label = gtk_label_new("Veuillez patienter...");
+    loading_label = gtk_label_new("Please wait...");
     gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
     gtk_widget_show_all(loading_window);
 
@@ -599,23 +579,21 @@ void on_submit(GtkWidget *widget, gpointer data) {
 void on_submit(GtkWidget *widget, gpointer data) {
     (void)widget;
     GtkWidget **entries = (GtkWidget **)data;
-
     const gchar *name = gtk_entry_get_text(GTK_ENTRY(entries[0]));
     const gchar *inputs = gtk_entry_get_text(GTK_ENTRY(entries[1]));
     const gchar *outputs = gtk_entry_get_text(GTK_ENTRY(entries[2]));
     const gchar *nb_layers = gtk_entry_get_text(GTK_ENTRY(entries[3]));
     const gchar *nb_neurones = gtk_entry_get_text(GTK_ENTRY(entries[4]));
-
     int nb_inputs = 0;
     int **input = get_input(inputs, &nb_inputs);
     int *output = get_output(outputs);
     int nb_layer = atoi(nb_layers);
     int *nb_neurone = get_neurones(nb_neurones);
     GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(loading_window), "Chargement...");
+    gtk_window_set_title(GTK_WINDOW(loading_window), "Loading...");
     gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
     gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-    loading_label = gtk_label_new("Entraînement en cours...\nVeuillez patienter...");
+    loading_label = gtk_label_new("Training in progress...\nPlease wait...");
     gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
     gtk_widget_show_all(loading_window);
     ThreadData *td = g_malloc(sizeof(ThreadData));
@@ -658,36 +636,31 @@ void open_training_network_window(GtkWidget *widget, gpointer data) {
     gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
 
-    gtk_grid_attach(GTK_GRID(grid), label_input,   0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_input,   1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), label_input, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), entry_input, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), label_output, 0, 1, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), entry_output, 1, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_nb_layer,   0, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_nb_layer,   1, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_nb_neurones,   0, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_nb_neurones,   1, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_name,   0, 4, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_name,   1, 4, 1, 1);
-
-   gtk_box_pack_start(GTK_BOX(vbox), grid, TRUE, TRUE, 0);
+    gtk_grid_attach(GTK_GRID(grid), label_nb_layer,  0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), entry_nb_layer,1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), label_nb_neurones, 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), entry_nb_neurones,1, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), label_name, 0, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid),entry_name, 1, 4, 1, 1);
+    gtk_box_pack_start(GTK_BOX(vbox), grid, TRUE, TRUE, 0);
     gtk_widget_set_halign(grid, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(grid, GTK_ALIGN_CENTER);
-
     GtkWidget *button = gtk_button_new_with_label("Start learning");
     gtk_widget_set_size_request(button, 200, 50);
     gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 10);
     gtk_widget_set_halign(button, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(button, GTK_ALIGN_CENTER);
-
     GtkWidget **entries = g_new(GtkWidget*, 5);
     entries[0] = entry_name;
     entries[1] = entry_input;
     entries[2] = entry_output;
     entries[3] = entry_nb_layer;
     entries[4] = entry_nb_neurones;
-
     g_signal_connect(button, "clicked", G_CALLBACK(on_submit), entries);
-
     gtk_widget_show_all(window);
 }
 
@@ -697,7 +670,7 @@ void open_testing_window(GtkWidget *widget, gpointer data) {
     (void)widget;
     (void)data;
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Résolution d'image");
+    gtk_window_set_title(GTK_WINDOW(window), "image resolution");
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     
@@ -800,17 +773,13 @@ GdkPixbuf* rotate_pixbuf(GdkPixbuf *pixbuf, double angle_degrees)
 	
 	int w = gdk_pixbuf_get_width(pixbuf);
 	int h = gdk_pixbuf_get_height(pixbuf);
-	
 	double angle = angle_degrees * (M_PI / 180.0);
-	
 	double cos_a = fabs(cos(angle));
 	double sin_a = fabs(sin(angle));
 	int new_w = (int)(w * cos_a + h * sin_a);
 	int new_h = (int)(w * sin_a + h * cos_a);
-	
 	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, new_w, new_h);
 	cairo_t *c_surface = cairo_create(surface);
-	
 	cairo_set_source_rgb(c_surface, 1, 1, 1); 
 	cairo_paint(c_surface);
 	cairo_translate(c_surface, new_w / 2.0, new_h / 2.0);
@@ -837,7 +806,7 @@ gboolean _on_key_press(GtkWidget *CurrentWidget, GdkEventKey *KeyEvent, gpointer
 	ImageData *img_data = g_object_get_data(G_OBJECT(window), "image_data");
 	if (!img_data || !img_data->pixbuf) 
 	{
-        	g_print("Aucune image chargée.\n");
+        	g_print("No image to load\n");
         	return FALSE;
     	}
 
@@ -865,11 +834,11 @@ gboolean _on_key_press(GtkWidget *CurrentWidget, GdkEventKey *KeyEvent, gpointer
 	{
     	   	gtk_image_set_from_pixbuf(GTK_IMAGE(img_data->image), rotated);
     	    	g_object_unref(rotated);
-   	    	g_print("Image tournée à %.1f degrés\n", img_data->angle);
+   	    	g_print("Image rotate at %.1f degrees\n", img_data->angle);
   	} 
 	else 
 	{
-        	g_print("Erreur lors de la rotation de l'image !\n");
+        	g_print("Error when rotating image!\n");
    	}
 	
 	return TRUE;
