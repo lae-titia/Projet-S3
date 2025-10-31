@@ -446,19 +446,7 @@ void ajouter_resultat(const char *texte_resultat) {
         pending_results = g_list_append(pending_results, g_strdup(texte_resultat));
     }
 }
-/*
-void show_training_finished_dialog() {
-    GtkWidget *dialog;
-    dialog = gtk_message_dialog_new(GTK_WINDOW(main_window),
-                                    GTK_DIALOG_MODAL,
-                                    GTK_MESSAGE_INFO,
-                                    GTK_BUTTONS_OK,
-                                    "Training complete !\n\nGo to \"Testing\" to see the result.");
-    gtk_window_set_title(GTK_WINDOW(dialog), "Information");
-    gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
-}
-*/
+
 gboolean ajouter_resultat_idle(gpointer data) {
     const char *texte_resultat = (const char *)data;
 
@@ -533,49 +521,7 @@ gboolean close_loading_window(gpointer data) {
 }
 
 //Callback triggered when the user submits the training form
-/*
-void on_submit(GtkWidget *widget, gpointer data) {
-    (void)widget;
-    GtkWidget **entries = (GtkWidget **)data;
 
-    const gchar *name = gtk_entry_get_text(GTK_ENTRY(entries[0]));
-    const gchar *inputs = gtk_entry_get_text(GTK_ENTRY(entries[1]));
-    const gchar *outputs = gtk_entry_get_text(GTK_ENTRY(entries[2]));
-    const gchar *nb_layers = gtk_entry_get_text(GTK_ENTRY(entries[3]));
-    const gchar *nb_neurones = gtk_entry_get_text(GTK_ENTRY(entries[4]));
-
-    int nb_inputs = 0;
-    int **input = get_input(inputs, &nb_inputs);
-    int *output = get_output(outputs);
-    int nb_layer = atoi(nb_layers);
-    int *nb_neurone = get_neurones(nb_neurones);
-    
-
-    GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(loading_window), "Loading...");
-    gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
-    gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-    loading_label = gtk_label_new("Please wait...");
-    gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
-    gtk_widget_show_all(loading_window);
-
-
-    ThreadData *td = g_malloc(sizeof(ThreadData));
-    td->nb_inputs = nb_inputs;
-    td->input = input;
-    td->output = output;
-    td->nb_layer = nb_layer;
-    td->nb_neurone = nb_neurone;
-    td->name = g_strdup(name); 
-
-   // g_timeout_add_seconds(5, close_loading_window, loading_window);
-
-
-    GThread *thread = g_thread_new("worker", thread_function, td);
-    
-    g_thread_unref(thread);
-
-}*/
 void on_submit(GtkWidget *widget, gpointer data) {
     (void)widget;
     GtkWidget **entries = (GtkWidget **)data;
