@@ -1,5 +1,5 @@
 #ifndef TRAITEMENT_H
-#define TRIATEMENT_H
+#define TRAITEMENT_H
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h> 
 SDL_Texture* surface_to_grayscale_texture(SDL_Surface *surface, SDL_Renderer *renderer);

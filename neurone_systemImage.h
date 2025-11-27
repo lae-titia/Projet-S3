@@ -2,6 +2,7 @@
 #define NEURONE_SYSTEM_H
 
 //#include <glib-2.0/glib.h>
+#include "png_to_bmp.h"
 
 struct Layer {
 	int nb_neurone;
@@ -22,13 +23,11 @@ double sigmoid(double x);
 double dsigmoid(double y);
 void backprop(struct LayerNetwork *net, double *inputs, double target);
 void forward(struct LayerNetwork *net, double *inputs);
-void traning(struct LayerNetwork *ln, double** inputs, double* outputs, int size_input);
+void traning(struct LayerNetwork *ln, double** inputs, double** outputs, int size_input);
 void save_network(struct Layer *layers, int n_layers, const char *filename);
 struct Layer* load_network(const char *filename, int *n_layers_out);
-double *prediction(double *input, const char *file_name);
-void principal(double **inputs, int *neurones_par_couche,
-              const char *file_name, double *outputs,
-              int nb_layers, int nb_inputs);
+void prediction(char *test_file, char* lettre);
+void principal(void);
 /*
 typedef struct neuron_t
 {

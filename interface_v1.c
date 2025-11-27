@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
-#include "neurone_system.h"
+#include "neurone_systemImage.h"
 #include <glib-2.0/glib.h>
 #define RESULTS_FILE "results.txt"
 #include <cairo.h>
@@ -9,6 +9,7 @@
 #include "traitement_image.h"
 #include <stdio.h>
 #include "segmenter.h"
+
 //struct for image info in rotation
 typedef struct 
 {
@@ -24,43 +25,8 @@ GList *pending_results = NULL;
 GtkWidget *main_window = NULL;
 GtkWidget *loading_label = NULL;
 GtkWidget *global_loading_window = NULL;
-//Struct used for the training section to give the result after learning
-typedef struct {
-    GtkWidget *entry;
-    char *label_text;
-} ResultData;
 
 
-typedef struct {
-    int nb_inputs;
-    int **input;
-    int *output;
-    int nb_layer;
-    int *nb_neurone;
-    gchar *name;
-} ThreadData;
-
-void save_pending_results_to_file() {
-    FILE *f = fopen(RESULTS_FILE, "w");
-    if (!f) return;
-    for (GList *l = pending_results; l != NULL; l = l->next) {
-        fprintf(f, "%s\n", (char *)l->data);
-    }
-    fclose(f);
-}
-
-
-void load_pending_results_from_file() {
-    FILE *f = fopen(RESULTS_FILE, "r");
-    if (!f) return;
-
-    char buffer[256];
-    while (fgets(buffer, sizeof(buffer), f)) {
-        buffer[strcspn(buffer, "\n")] = '\0';  
-        pending_results= g_list_append(pending_results, g_strdup(buffer));
-    }
-    fclose(f);
-}
 
 int main (int argc, char *argv[])
 {
@@ -74,7 +40,7 @@ int main (int argc, char *argv[])
 	GtkCssProvider *css_;
 	GtkWidget *hbox;	
 	gtk_init(&argc, &argv);
-	load_pending_results_from_file();	
+		
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	main_window = window;
 	gtk_window_set_title (GTK_WINDOW (window), "SolvLad");
@@ -242,356 +208,137 @@ void open_resolution_window(GtkWidget *widget, gpointer data) {
 }
 
 
-// get_input: Converts a string of input pairs into a dynamically allocated 2D integer array.
-//input format: "(0,0), (1,0), (1,1)"
-// Parameters:
-//inputs      - The input string containing pairs of integers.
-//nb_elmt_out - Pointer to an int where the number of input pairs will be stored.
-//Returns:
-//A pointer to a dynamically allocated 2D array of integers [nb_elmt][2].
-//Notes:
-//- The function counts the number of ')' characters to determine the number of pairs.
-//- Curly braces and parentheses are replaced by spaces to facilitate parsing.
-//- Each pair of integers is stored in input[i][0] and input[i][1].
-//- Caller is responsible for freeing the allocated memory.
-
-int **get_input(const gchar *inputs, int *nb_elmt_out)
-{
-    if (!inputs) return NULL;
-    int nb_elmt=0;
-    for (int i =0; inputs[i]; i++) {
-        if (inputs[i]== ')')
-            nb_elmt++;
-    }
-    if (nb_elmt_out)
-        *nb_elmt_out = nb_elmt; 
-
-    int **input = malloc(nb_elmt * sizeof(int *));
-    for (int i = 0; i < nb_elmt; i++)
-        input[i] = malloc(2 * sizeof(int));
-
-    char *clean = g_strdup(inputs);
-    for (int i = 0; clean[i]; i++) {
-        if (clean[i] == '{' || clean[i] == '}' || clean[i] == '(' || clean[i] == ')')
-            clean[i] = ' ';
-    }
-
-    int x;
-    int idx = 0;
-    char *token = strtok(clean, ", ");
-    while (token && idx < nb_elmt * 2) {
-        if (sscanf(token, "%d", &x) == 1) {
-            if (idx % 2 == 0)
-                input[idx / 2][0] = x;
-            else
-                input[idx / 2][1] = x;
-            idx++;
-        }
-        token = strtok(NULL, ", ");
-    }
-    g_free(clean);
-    return input;
-}
-
-
-//get_output: converts a string of output values into a dynamically allocated integer array.
-//input format: "0, 1, 1, 0"
-//Parameters:
-//outputs - The input string containing integer output values.
-// Returns:
-//A pointer to a dynamically allocated integer array containing the parsed outputs.
-//Notes:
-//-parentheses are replaced with spaces to facilitate parsing.
-//- array size is currently fixed to 100 elements; adjust if needed.
-//- caller is responsible for freeing the allocated memory.
-//- The function prints the parsed outputs for debugging purposes.
-
-int *get_output(const gchar *outputs)
-{
-    if (!outputs) return NULL;
-
-    char *clean = g_strdup(outputs);
-    for (int i = 0; clean[i]; i++) {
-        if (clean[i] == '{' || clean[i] == '}' || clean[i] == '(' || clean[i] == ')')
-            clean[i] = ' ';
-    }
-
-    int *array = malloc(100 * sizeof(int));
-    int val, count = 0;
-    char *token = strtok(clean, ", ");
-    while (token) {
-        if (sscanf(token, "%d", &val) == 1) {
-            array[count++] = val;
-        }
-        token = strtok(NULL, ", ");
-    }
-
-    g_free(clean);
-    return array;
-}
-
-
-// get_neurones: Parses a string representing the number of neurons per layer into an integer array.
-// Example input format: "2, 3, 1"
-// Parameters:
-//nb_neurones - The input string containing the number of neurons for each layer.
-// Returns:
-// A pointer to a dynamically allocated integer array containing the parsed neuron counts.
-// Notes:
-//- parentheses are replaced with spaces to simplify parsing.
-//- array size is currently fixed at 100 elements; adjust if needed for larger networks.
-//- Caller is responsible for freeing the allocated memory.
-
-int *get_neurones(const gchar *nb_neurones)
-{
-    if (!nb_neurones) return NULL;
-
-    char *clean = g_strdup(nb_neurones);
-
-    for (int i = 0; clean[i]; i++) {
-        if (clean[i] == '{' || clean[i] == '}' || clean[i] == '(' || clean[i] == ')')
-            clean[i] = ' ';
-    }
-
-    int *array = malloc(100 * sizeof(int));
-    if (!array) return NULL;
-
-    int val, count = 0;
-    char *token = strtok(clean, ", ");
-    while (token) {
-        if (sscanf(token, "%d", &val) == 1) {
-            array[count++] = val;
-        }
-        token = strtok(NULL, ", ");
-    }
-
-
-    g_free(clean);
-    return array;
-}
-
-
-//Uses the neural network to predict the output for the user's input and displays the result in a new window
-// The input is read from data->entry.
-
-// the function is called by the on_result_clicked function
-
-void on_result(GtkWidget *button, gpointer user_data)
-{  (void)button;
-    ResultData *data = (ResultData *)user_data;
-
-    const char *input_text = gtk_entry_get_text(GTK_ENTRY(data->entry));
-    int nb_inputs = 0;
-    int **input = get_input(input_text, &nb_inputs);
-    double input_d[2];
-    input_d[0] = (double)input[0][0];
-    input_d[1] = (double)input[0][1];
-    printf("Avant prediction : input[0] = (%d, %d)\n", input[0][0], input[0][1]);
-    double *value = prediction(input_d, data->label_text);
-    double val = value[0];
-    printf("val : %f\n", val);
-    char buffer[50];
-    snprintf(buffer, sizeof(buffer), "%.0f", val);
-    GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(loading_window), "Result");
-    gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
-    gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-    GtkWidget *label = gtk_label_new(buffer);
-    gtk_container_add(GTK_CONTAINER(loading_window), label);
-    gtk_widget_show_all(loading_window);
-
+gboolean training_finished_callback(gpointer data) {
+    GtkWidget *loading_label = GTK_WIDGET(data);
+    gtk_label_set_text(GTK_LABEL(loading_label), "Training terminé !");
     
+
+    return FALSE; 
 }
 
- 
-//This function is called when a result button is clicked in the testing section
-//It opens a new window where the user can enter input for the neural network
-//The "Result" button in the window is connected to on_result(), which computes and displays the neural network's prediction for the entered input
-void on_result_clicked(GtkWidget *button, gpointer user_data) {
-    (void)user_data;
-    const char *label = gtk_button_get_label(GTK_BUTTON(button));
-    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Testing Section");
-    gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_container_add(GTK_CONTAINER(window), vbox);
-    GtkWidget *label_input = gtk_label_new("Enter your input");
-    GtkWidget *entry_input = gtk_entry_new();
-    gtk_box_pack_start(GTK_BOX(vbox), label_input, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), entry_input, FALSE, FALSE, 0);
-    GtkWidget *button_result = gtk_button_new_with_label("Result");
-    gtk_widget_set_size_request(button_result, 200, 50);
-    gtk_box_pack_start(GTK_BOX(vbox), button_result, FALSE, FALSE, 10);
-    gtk_widget_set_halign(button_result, GTK_ALIGN_CENTER);
-    gtk_widget_set_valign(button_result, GTK_ALIGN_CENTER);
-    ResultData *data = g_malloc(sizeof(ResultData));
-    data->entry = entry_input;
-    data->label_text = g_strdup(label); 
-    g_signal_connect(button_result, "clicked", G_CALLBACK(on_result), data);
-    gtk_widget_show_all(window);
+
+void _clicked_upload(GtkWidget *widget, gpointer data) {
+    GtkWidget *parent = GTK_WIDGET(data); // le vbox ou la fenêtre
+    GtkWidget *dialog = gtk_file_chooser_dialog_new(
+        "Select an image",
+        GTK_WINDOW(gtk_widget_get_toplevel(parent)),
+        GTK_FILE_CHOOSER_ACTION_OPEN,
+        "_Cancel", GTK_RESPONSE_CANCEL,
+        "_Open", GTK_RESPONSE_ACCEPT,
+        NULL);
+
+    GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        char *filename = gtk_file_chooser_get_filename(chooser);
+        g_print("Fichier sélectionné : %s\n", filename);
+
+        // stocke le chemin dans le bouton pour pouvoir le récupérer plus tard
+        g_object_set_data(G_OBJECT(widget), "uploaded_file", filename);
+    }
+
+    gtk_widget_destroy(dialog);
 }
 
- 
-//Adds a new result button to the testing window if it exists.
-//If the testing window is not yet created, the result is stored in the pending_results list for later use
 
-void ajouter_resultat(const char *texte_resultat) {
-    if (box_testing_contain) {
-        GtkWidget *btn = gtk_button_new_with_label(texte_resultat);
-        g_signal_connect(btn, "clicked", G_CALLBACK(on_result_clicked), NULL);
-        gtk_box_pack_start(GTK_BOX(box_testing_contain), btn, FALSE, FALSE, 5);
-        gtk_widget_show_all(box_testing_contain);
+void move_file_to_letter_folder(const char *filepath, char letter) {
+   
+    if (letter >= 'a' && letter <= 'z') letter -= 32;
+
+    const char *filename = strrchr(filepath, '/'); 
+    if (!filename) filename = filepath;
+    else filename++;
+
+    char newpath[512];
+    snprintf(newpath, sizeof(newpath), "./lettres/%c/%s", letter, filename);
+    printf("%s = %s ??\n", newpath, filename);
+
+    if (access(filepath, F_OK) != 0) perror("Source inexistante");
+
+    if (rename(filepath, newpath) == 0) {
+        g_print("Fichier déplacé vers : %s\n", newpath);
     } else {
-        pending_results = g_list_append(pending_results, g_strdup(texte_resultat));
+        perror("Erreur déplacement fichier");
     }
 }
 
-gboolean ajouter_resultat_idle(gpointer data) {
-    const char *texte_resultat = (const char *)data;
+typedef struct {
+    char *filename;
+    char letter;
+} ThreadPrincipalData;
 
-    for (GList *l = pending_results; l != NULL; l = l->next) {
-        if (g_strcmp0((const char *)l->data, texte_resultat) == 0) {
-            g_free((gpointer)texte_resultat);
-            return G_SOURCE_REMOVE;
-        }
-    }
+gpointer thread_principal(gpointer data) {
+    ThreadPrincipalData *td = (ThreadPrincipalData *)data;
 
-    pending_results = g_list_append(pending_results, g_strdup(texte_resultat));
-    save_pending_results_to_file();  
-
-    if (box_testing_contain) {
-        GtkWidget *btn = gtk_button_new_with_label(texte_resultat);
-        g_signal_connect(btn, "clicked", G_CALLBACK(on_result_clicked), NULL);
-        gtk_box_pack_start(GTK_BOX(box_testing_contain), btn, FALSE, FALSE, 5);
-        gtk_widget_show_all(box_testing_contain);
-    }
-
-    g_free((gpointer)texte_resultat);
-    if (loading_label) {
-    gtk_label_set_text(GTK_LABEL(loading_label),
-        "Training complete !\nGo to \"Testing\" to see the result.");
-}
-    return G_SOURCE_REMOVE;
-}
-
-
-//It converts integer inputs/outputs to double
-gpointer thread_function(gpointer data) {
-    ThreadData *td = (ThreadData *)data;
-    double **inputs_d = malloc(td->nb_inputs * sizeof(double *));
-    for (int i = 0; i < td->nb_inputs; i++) {
-        inputs_d[i] = malloc(2 * sizeof(double));
-        inputs_d[i][0] = (double) td->input[i][0];
-        inputs_d[i][1] = (double) td->input[i][1];
-    }
-
-    double *outputs_d = malloc(td->nb_inputs * sizeof(double));
-    for (int i = 0; i < td->nb_inputs; i++) 
-        outputs_d[i] = (double) td->output[i];
-
-    int *neurones_d = td->nb_neurone;
+    printf("Thread démarré\n");
     
-    principal(inputs_d, neurones_d, td->name, outputs_d, td->nb_layer, td->nb_inputs);
-    g_idle_add((GSourceFunc)ajouter_resultat_idle, g_strdup(td->name));
+    principal();
 
-    for (int i = 0; i < td->nb_inputs; i++) free(inputs_d[i]);
-    free(inputs_d);
-    free(outputs_d);
+    g_idle_add((GSourceFunc)training_finished_callback, loading_label);
 
-    for (int i = 0; i < td->nb_inputs; i++) {
-        if (td->input[i]) free(td->input[i]);
-    }
-    free(td->input);
-    free(td->output);
-    free(td->nb_neurone);
+    g_free(td->filename);
+    g_free(td);
 
-        if (td->name) g_free(td->name);
-        g_free(td);
-
-        fprintf(stderr, ">>> thread_function: exit\n");
-        fflush(stderr);
+    printf("Thread terminé\n");
     return NULL;
 }
 
-gboolean close_loading_window(gpointer data) {
-    GtkWidget *loading_window = GTK_WIDGET(data);
-    gtk_widget_destroy(loading_window);
-    return FALSE;
-}
-
-//Callback triggered when the user submits the training form
-
-void on_submit(GtkWidget *widget, gpointer data) {
-    (void)widget;
+void on_submit_neurone(GtkWidget *widget, gpointer data) {
     GtkWidget **entries = (GtkWidget **)data;
-    const gchar *name = gtk_entry_get_text(GTK_ENTRY(entries[0]));
-    const gchar *inputs = gtk_entry_get_text(GTK_ENTRY(entries[1]));
-    const gchar *outputs = gtk_entry_get_text(GTK_ENTRY(entries[2]));
-    const gchar *nb_layers = gtk_entry_get_text(GTK_ENTRY(entries[3]));
-    const gchar *nb_neurones = gtk_entry_get_text(GTK_ENTRY(entries[4]));
-    int nb_inputs = 0;
-    int **input = get_input(inputs, &nb_inputs);
-    int *output = get_output(outputs);
-    int nb_layer = atoi(nb_layers);
-    int *nb_neurone = get_neurones(nb_neurones);
-    GtkWidget *loading_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(loading_window), "Loading...");
-    gtk_window_set_default_size(GTK_WINDOW(loading_window), 300, 200);
-    gtk_window_set_position(GTK_WINDOW(loading_window), GTK_WIN_POS_CENTER);
-    loading_label = gtk_label_new("Training in progress...\nPlease wait...");
-    gtk_container_add(GTK_CONTAINER(loading_window), loading_label);
-    gtk_widget_show_all(loading_window);
-    ThreadData *td = g_malloc(sizeof(ThreadData));
-    td->nb_inputs = nb_inputs;
-    td->input = input;
-    td->output = output;
-    td->nb_layer = nb_layer;
-    td->nb_neurone = nb_neurone;
-    td->name = g_strdup(name);
-    GThread *thread = g_thread_new("worker", thread_function, td);
+    GtkWidget *upload_button = entries[0]; 
+    GtkWidget *entry_input = entries[1];    
+
+    char *filename = g_object_get_data(G_OBJECT(upload_button), "uploaded_file");
+    const char *letter_text = gtk_entry_get_text(GTK_ENTRY(entry_input));
+
+    if (!filename) {
+        g_print("Aucun fichier sélectionné !\n");
+        return;
+    }
+    if (!letter_text || strlen(letter_text) != 1) {
+        g_print("Veuillez entrer une seule lettre !\n");
+        return;
+    }
+
+    char letter = letter_text[0];
+    move_file_to_letter_folder(filename, letter);
+    g_print("Avant création thread\n");
+    ThreadPrincipalData *td = g_malloc(sizeof(ThreadPrincipalData));
+    td->filename = g_strdup(filename);
+    td->letter = letter;
+
+    GThread *thread = g_thread_new("worker", thread_principal, td);
     g_thread_unref(thread);
-    global_loading_window = loading_window;
+    
+
 }
-
-
-//Opens a new window allowing the user to create and configure a neural network for training
 
 void open_training_network_window(GtkWidget *widget, gpointer data) {
-    (void)data;
+    
     (void)widget;
+    (void)data;
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Training");
+    gtk_window_set_title(GTK_WINDOW(window), "Image to learn");
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_container_add(GTK_CONTAINER(window), vbox);
-    GtkWidget *label_name = gtk_label_new("Name your training");
-    GtkWidget *entry_name = gtk_entry_new();
-//Values to learn
-    GtkWidget *label_input = gtk_label_new("Enter the input");
+
+    GtkWidget *label = gtk_label_new("Upload your image to learn!");
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 10);
+
+    GtkWidget *buttonImage =  gtk_button_new_with_label("Upload");
+    gtk_box_pack_start(GTK_BOX(vbox), buttonImage, TRUE, TRUE, 0);
+    gtk_widget_set_size_request(buttonImage, 100, 50);
+    g_signal_connect(buttonImage, "clicked", G_CALLBACK(_clicked_upload), vbox);
+    GtkWidget *label_input = gtk_label_new("Enter the letter associated");
     GtkWidget *entry_input = gtk_entry_new();
-    GtkWidget *label_output = gtk_label_new("Enter the output expected");
-    GtkWidget *entry_output = gtk_entry_new();
-    GtkWidget *label_nb_layer = gtk_label_new("Enter the number of layers");
-    GtkWidget *entry_nb_layer = gtk_entry_new();
-    GtkWidget *label_nb_neurones = gtk_label_new("Enter the number of neurones per layers (ex: 2, 3, 1)");
-    GtkWidget *entry_nb_neurones = gtk_entry_new();
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
-
     gtk_grid_attach(GTK_GRID(grid), label_input, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), entry_input, 1, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_output, 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_output, 1, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_nb_layer,  0, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_nb_layer,1, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_nb_neurones, 0, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), entry_nb_neurones,1, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), label_name, 0, 4, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid),entry_name, 1, 4, 1, 1);
     gtk_box_pack_start(GTK_BOX(vbox), grid, TRUE, TRUE, 0);
     gtk_widget_set_halign(grid, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(grid, GTK_ALIGN_CENTER);
@@ -600,34 +347,74 @@ void open_training_network_window(GtkWidget *widget, gpointer data) {
     gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 10);
     gtk_widget_set_halign(button, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(button, GTK_ALIGN_CENTER);
-    GtkWidget **entries = g_new(GtkWidget*, 5);
-    entries[0] = entry_name;
+    GtkWidget **entries = g_new(GtkWidget*, 2);
+    entries[0] = buttonImage;
     entries[1] = entry_input;
-    entries[2] = entry_output;
-    entries[3] = entry_nb_layer;
-    entries[4] = entry_nb_neurones;
-    g_signal_connect(button, "clicked", G_CALLBACK(on_submit), entries);
+    g_signal_connect(button, "clicked", G_CALLBACK(on_submit_neurone), entries);
+    
+
     gtk_widget_show_all(window);
+    
 }
 
 
-//Opens the testing window where the user can see all previously trained networks as buttons
+
+void on_submit_prediction(GtkWidget *widget, gpointer data) {
+    GtkWidget **entries = (GtkWidget **)data;
+    GtkWidget *upload_button = entries[0]; 
+
+    char *filename = g_object_get_data(G_OBJECT(upload_button), "uploaded_file");
+    if (!filename) {
+        g_print("Aucun fichier sélectionné !\n");
+        return;
+    }
+
+    char *lettre = malloc(sizeof(char));
+    prediction(filename, lettre);
+    printf("La lettre est : %s", lettre);
+    char buffer[100];
+    snprintf(buffer, sizeof(buffer), "Prediction: %s", lettre);
+
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "Résultat");
+    gtk_window_set_default_size(GTK_WINDOW(window), 300, 200);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+
+    GtkWidget *label = gtk_label_new(buffer);
+    gtk_container_add(GTK_CONTAINER(window), label);
+    gtk_widget_show_all(window);
+
+
+}
+
+
 void open_testing_window(GtkWidget *widget, gpointer data) {
     (void)widget;
     (void)data;
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "image resolution");
+    gtk_window_set_title(GTK_WINDOW(window), "Letter to predict");
     gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     
-    box_testing_contain = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_container_add(GTK_CONTAINER(window), box_testing_contain);
-	for (GList *l = pending_results; l != NULL; l = l->next) {
-        const char *texte_resultat = (const char *)l->data;
-        GtkWidget *btn = gtk_button_new_with_label(texte_resultat);
-        g_signal_connect(btn, "clicked", G_CALLBACK(on_result_clicked), NULL);
-        gtk_box_pack_start(GTK_BOX(box_testing_contain), btn, FALSE, FALSE, 5);
-    }
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_container_add(GTK_CONTAINER(window), vbox);
+
+    GtkWidget *label = gtk_label_new("Upload your image to predict!");
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 10);
+
+    GtkWidget *buttonImage =  gtk_button_new_with_label("Upload");
+    gtk_box_pack_start(GTK_BOX(vbox), buttonImage, TRUE, TRUE, 0);
+    gtk_widget_set_size_request(buttonImage, 100, 50);
+    g_signal_connect(buttonImage, "clicked", G_CALLBACK(_clicked_upload), vbox);
+    GtkWidget *button = gtk_button_new_with_label("Predict");
+    gtk_widget_set_size_request(button, 200, 50);
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 10);
+    gtk_widget_set_halign(button, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(button, GTK_ALIGN_CENTER);
+    GtkWidget **entries = g_new(GtkWidget*, 2);
+    entries[0] = buttonImage;
+    g_signal_connect(button, "clicked", G_CALLBACK(on_submit_prediction), entries);
+    
 
     gtk_widget_show_all(window);
 }
