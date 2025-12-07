@@ -1,5 +1,8 @@
 # Projet-S3
 
+pour le img to txt : gcc -Wall -Wextra img_to_txt.c -o img_to_txt $(pkg-config --cflags --libs glib-2.0) -lm
+et après ./img_to_txt output/ grille.txt 
+
 Training Section :
 
 The training section is splited in 2 parts :
